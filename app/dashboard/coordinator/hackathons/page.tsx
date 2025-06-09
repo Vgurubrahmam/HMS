@@ -288,10 +288,10 @@ export default function CoordinatorHackathonsPage() {
 
         if (res.ok) {
           setHackathons(data.data)
-          toast({
-            title: "Success",
-            description: "Hackathons fetched successfully",
-          })
+          // toast({
+          //   title: "Success",
+          //   description: "Hackathons fetched successfully",
+          // })
         } else {
           toast({
             variant: "destructive",
@@ -357,7 +357,14 @@ export default function CoordinatorHackathonsPage() {
   // put method
   // Debugged handleUpdateHackathon
   const handleUpdateHackathon = async (id: string, updatedData: Partial<NewHackathon>) => {
-    console.log("updatedData");
+    if (!id) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Hackathon ID is missing.',
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -409,14 +416,12 @@ export default function CoordinatorHackathonsPage() {
       };
 
       const res = await fetch(`/api/hackathons/${id}`, {
-
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedData),
       });
 
       const data = await res.json();
-      console.log("update");
 
       if (!res.ok) {
         toast({
@@ -432,12 +437,12 @@ export default function CoordinatorHackathonsPage() {
         prev.map((h: any) =>
           String(h._id) === String(id)
             ? {
-              ...h,
-              ...formattedData,
-              startDate: new Date(formattedData.startDate).toISOString().split('T')[0],
-              endDate: new Date(formattedData.endDate).toISOString().split('T')[0],
-              registrationDeadline: new Date(formattedData.registrationDeadline).toISOString().split('T')[0],
-            }
+                ...h,
+                ...formattedData,
+                startDate: new Date(formattedData.startDate).toISOString().split('T')[0],
+                endDate: new Date(formattedData.endDate).toISOString().split('T')[0],
+                registrationDeadline: new Date(formattedData.registrationDeadline).toISOString().split('T')[0],
+              }
             : h
         )
       );
@@ -480,14 +485,15 @@ export default function CoordinatorHackathonsPage() {
   // Initialize edit form with selected hackathon data
   const handleEditClick = (hackathon: Hackathon) => {
     const formatDate = (date: string | Date) => {
-    if (!date) return '';
-    const d = new Date(date);
-    return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
-  };
+      if (!date) return '';
+      const d = new Date(date);
+      return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+    };
+
     setEditHackathon({
       title: hackathon.title || "",
       description: hackathon.description || "",
-      startDate:formatDate(hackathon.startDate),
+      startDate: formatDate(hackathon.startDate),
       endDate: formatDate(hackathon.endDate),
       registrationDeadline: formatDate(hackathon.registrationDeadline),
       registrationFee: hackathon.registrationFee?.toString() || "",
@@ -500,7 +506,8 @@ export default function CoordinatorHackathonsPage() {
       teamsFormed: hackathon.teamsFormed?.toString() || "",
       status: hackathon.status || "Planning",
     });
-    // setSelectedHackathon(hackathon);
+
+    // setSelectedHackathon(hackathon); // Ensure selected hackathon is set
     setIsEditDialogOpen(true);
   };
   return (

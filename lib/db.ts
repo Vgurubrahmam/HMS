@@ -4,6 +4,8 @@ import User from "./models/User"; // Ensure User model is registered
 const db= async()=>{
     try{
         const mongoUri = process.env.MONGODB_URI;
+        console.log(mongoUri);
+        
         if (!mongoUri) {
             throw new Error("MONGODB_URI environment variable is not defined");
         }

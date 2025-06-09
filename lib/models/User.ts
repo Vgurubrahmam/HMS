@@ -16,8 +16,9 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["coordinator", "mentor", "student", "faculty"], 
+      enum: ["coordinator", "mentor", "student", "faculty"], // Ensure lowercase enum values
       default: "student",
+      lowercase: true, // Automatically convert values to lowercase
     },
     image : {
       type: String,

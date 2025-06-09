@@ -93,30 +93,26 @@ export async function GETDetailed(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await db()
-
-    // Explicitly register the User model
+    console.log("called teams");
+    
+    // Explicitly register the User model to ensure it is accessible
     if (!mongoose.models.users) {
-      mongoose.model("users", UserModel.schema)
+      mongoose.model("users", UserModel.schema);
     }
+
+    console.log("Mongoose connection state:", mongoose.connection.readyState);
 
     const body = await request.json()
     const { name, hackathon, members, teamLead, mentor, projectTitle, projectDescription, room } = body
 
-    // Validate required fields
-    if (!name || !hackathon || !teamLead || !projectTitle) {
-      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
-    }
-
-    // Verify hackathon exists
-    const hackathonExists = await Hackathon.findById(hackathon)
+    const hackathonExists = await Hackathon.findById(hackathon);
     if (!hackathonExists) {
-      return NextResponse.json({ success: false, error: "Hackathon not found" }, { status: 404 })
+      return NextResponse.json({ success: false, error: "Hackathon not found" }, { status: 404 });
     }
 
-    // Verify team lead exists
-    const teamLeadUser = await UserModel.findById(teamLead)
+    const teamLeadUser = await UserModel.findById(teamLead);
     if (!teamLeadUser) {
-      return NextResponse.json({ success: false, error: "Team lead not found" }, { status: 404 })
+      return NextResponse.json({ success: false, error: "Team lead not found" }, { status: 404 });
     }
 
     const team = new Team({
@@ -128,23 +124,23 @@ export async function POST(request: NextRequest) {
       projectTitle,
       projectDescription,
       room,
-    })
+    });
 
-    await team.save()
+    await team.save();
     await team.populate([
       { path: "hackathon", select: "title" },
       { path: "members", select: "name email role" },
       { path: "teamLead", select: "name email" },
       { path: "mentor", select: "name email" },
-    ])
+    ]);
 
     return NextResponse.json(
       {
         success: true,
         data: team,
       },
-      { status: 201 },
-    )
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error creating team:", error)
     return NextResponse.json({ success: false, error: "Failed to create team" }, { status: 500 })

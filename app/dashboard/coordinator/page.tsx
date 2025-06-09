@@ -70,10 +70,10 @@ const [loading,setLoading]=useState(false)
 
         if (res.ok) {
           setHackathons(data.data)
-          toast({
-            title: "Success",
-            description: "Hackathons fetched successfully",
-          })
+          // toast({
+          //   title: "Success",
+          //   description: "Hackathons fetched successfully",
+          // })
         } else {
           toast({
             variant: "destructive",

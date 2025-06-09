@@ -22,10 +22,10 @@ export interface ITeam extends Document {
 const TeamSchema = new Schema<ITeam>(
   {
     name: { type: String, required: true },
-    hackathon: { type: Schema.Types.ObjectId, ref: "Hackathon" },
-    members: [{ type: Schema.Types.ObjectId, ref: "User" }],
-    teamLead: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    mentor: { type: Schema.Types.ObjectId, ref: "User" },
+    hackathon: { type: Schema.Types.ObjectId, ref: "hackathons" },
+    members: [{ type: Schema.Types.ObjectId }],
+    teamLead: { type: Schema.Types.ObjectId },
+    mentor: { type: Schema.Types.ObjectId },
     projectTitle: { type: String, required: true },
     projectDescription: { type: String },
     progress: { type: Number, default: 0, min: 0, max: 100 },
@@ -49,4 +49,4 @@ const TeamSchema = new Schema<ITeam>(
   },
 )
 
-export default mongoose.models.teamcreations || mongoose.model<ITeam>("teamcreations", TeamSchema)
+export default mongoose.models.teamcreations || mongoose.model("teamcreations", TeamSchema)

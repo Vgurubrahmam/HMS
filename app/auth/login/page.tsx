@@ -42,7 +42,7 @@ export default function LoginPage() {
       toast({title:"Login Successfully",description:`Redirecting to ${data.roleData.role} dashboard...`})
         localStorage.setItem("token",data.token)
         switch (data.roleData.role) {
-        case "lead":
+        case "coordinator":
           router.push("/dashboard/coordinator")
           break
         case "faculty":
@@ -55,7 +55,7 @@ export default function LoginPage() {
           router.push("/dashboard/mentor")
           break
         default:
-          router.push("/dashboard")
+          router.push("/dashboard/coordinator")
       }
     }catch(error){
 
@@ -109,7 +109,7 @@ export default function LoginPage() {
         title: "Login Successful",
         description: "Redirecting to dashboard...",
       });
-      router.push("/dashboard/student");
+      router.push("/dashboard/coordinator");
     } else {
       toast({
         title: "Signup failed",

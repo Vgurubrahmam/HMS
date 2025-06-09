@@ -82,7 +82,7 @@ export function DashboardLayout({
 }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userName, setUserName] = useState(initialUserName || "User");
-  const [userRole, setUserRole] = useState<"coordinator" | "faculty" | "student" | "mentor">(initialUserRole || "student");
+  const [userRole, setUserRole] = useState<"coordinator" | "faculty" | "student" | "mentor">(initialUserRole);
   const [userImage, setUserImage] = useState("");
   const router = useRouter()
   const pathname = usePathname()

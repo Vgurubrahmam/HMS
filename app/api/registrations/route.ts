@@ -23,8 +23,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<JsonResponse>
     if (exstingUser) {
       return NextResponse.json({ message: "User alreay exists" }, { status: 400 });
     }
-    const validRoles = ["Coordinator", "mentor", "student", "faculty"];
-    const normalizedRole = role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+    const validRoles = ["coordinator", "mentor", "student", "faculty"];
+const normalizedRole = role.toLowerCase();
     if (!validRoles.includes(normalizedRole)) {
       return NextResponse.json({ message: `Invalid role: ${role}` }, { status: 400 });
     }
@@ -33,10 +33,16 @@ export async function POST(req: NextRequest): Promise<NextResponse<JsonResponse>
       username,
       email,
       password: hashPassword,
-      role,
+      role: normalizedRole,
     });
     await newUser.save();
-    return NextResponse.json({ message: "user registered successfully" }, { status: 201 });
+
+    // Reset dialog form fields and close dialog
+    return NextResponse.json({
+      message: "user registered successfully",
+      resetFields: true,
+      closeDialog: true,
+    }, { status: 201 });
   } catch (error) {
     console.error("Server error", error);
     return NextResponse.json({ message: "Server error", error }, { status: 500 });

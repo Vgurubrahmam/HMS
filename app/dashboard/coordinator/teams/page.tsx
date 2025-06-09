@@ -79,7 +79,7 @@ const formmatedTeam={
     updateTeam: any,
     deleteTeam: any,
   }
-  const [hackathons,setHackathons]=useState([])
+  const [hackathons,setHackathons] = useState([])
   const { users: students } = useUsers({ role: "student" })
   const { users: mentors } = useUsers({ role: "mentor" })
  const [pagination, setPagination] = useState({
@@ -130,10 +130,10 @@ const formmatedTeam={
 
         if (res.ok) {
           setHackathons(data.data)
-          toast({
-            title: "Success",
-            description: "Hackathons fetched successfully",
-          })
+          // toast({
+          //   title: "Success",
+          //   description: "Hackathons fetched successfully",
+          // })
         } else {
           toast({
             variant: "destructive",
@@ -173,18 +173,26 @@ const formmatedTeam={
       throw new Error(data.error || 'Failed to create team');
     }
 
-    fetchTeams()
+    fetchTeams();
+    setNewTeam({
+      name: "",
+      hackathon: "",
+      projectTitle: "",
+      projectDescription: "",
+      room: "",
+      teamLead: "",
+      members: [],
+    });
+    setSelectedTeam(null); // Clear edit-related state
+    setIsCreateDialogOpen(false);
+  } catch (error: any) {
     toast({
-
-      title: "success",
-      description: data.message,
-    })
-    
-  } catch (error:any) {
-    return {
-      success: false,
-      error: error.message || 'An unexpected error occurred',
-    };
+      title: "Error",
+      description: error.message || 'An unexpected error occurred',
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
   }
 };
 // get teams method
@@ -205,10 +213,10 @@ useEffect(()=>{
 
       if (res.ok && data.data) { 
         setTeams(data.data);
-        toast({
-          title: 'Success',
-          description: data.message || 'Teams fetched successfully',
-        });
+        // toast({
+        //   title: 'Success',
+        //   description: data.message || 'Teams fetched successfully',
+        // });
       } else {
         toast({
           variant: 'destructive',
@@ -419,7 +427,7 @@ useEffect(()=>{
                         <SelectValue placeholder="Select hackathon" />
                       </SelectTrigger>
                       <SelectContent>
-                        {hackathons.map((hackathon: any) => (
+                        {hackathons?.map((hackathon: any) => (
                           <SelectItem key={hackathon._id} value={hackathon._id}>
                             {hackathon.title}
                           </SelectItem>
@@ -461,7 +469,7 @@ useEffect(()=>{
                         <SelectValue placeholder="Select team lead" />
                       </SelectTrigger>
                       <SelectContent>
-                        {students.map((student: any) => (
+                        {students?.map((student: any) => (
                           <SelectItem key={student._id} value={student._id}>
                             {student.name} - {student.email}
                           </SelectItem>
@@ -563,7 +571,7 @@ useEffect(()=>{
 
           <TabsContent value="grid" className="space-y-6">
             <div className="grid gap-6">
-              {filteredTeams.map((team: any) => (
+              {filteredTeams?.map((team: any) => (
                 <Card key={team._id} className="overflow-hidden">
                   <CardHeader>
                     <div className="flex justify-between items-start">
