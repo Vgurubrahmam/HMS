@@ -39,7 +39,7 @@ const normalizedRole = role.toLowerCase();
 
     // Reset dialog form fields and close dialog
     return NextResponse.json({
-      message: "user registered successfully",
+      message: "User registered successfully",
       resetFields: true,
       closeDialog: true,
     }, { status: 201 });

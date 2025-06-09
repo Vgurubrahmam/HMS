@@ -49,7 +49,7 @@ export async function POST(req: Request): Promise<Response> {
         const response: LoginResponse = {
             token,
             roleData: { email, role: user.role || "empty", userId: user._id },
-            message: "user logged in successfully"
+            message: "User logged in successfully"
         };
         return NextResponse.json(response);
     } catch (error) {
