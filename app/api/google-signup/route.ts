@@ -37,7 +37,7 @@ export async function POST(req: Request): Promise<Response> {
                 email: userInfo.email,
                 image: userInfo.image,
                 password: userInfo.password,
-                role: "lead"
+                role: "coordinator"
             });
             await user.save();
         }

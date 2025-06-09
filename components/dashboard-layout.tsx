@@ -94,9 +94,9 @@ useEffect(() => {
         const decoded: any = jwtDecode(token)
         if (decoded) {
           setUserName(decoded.username || "User")
-          // Map "lead" to "coordinator" for compatibility
+          // Map "Coordinator" to "coordinator" for compatibility
           const mappedRole =
-            decoded.role === "lead"
+            decoded.role === "Coordinator"
               ? "coordinator"
               : decoded.role;
           setUserRole(

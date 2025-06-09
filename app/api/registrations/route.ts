@@ -23,6 +23,11 @@ export async function POST(req: NextRequest): Promise<NextResponse<JsonResponse>
     if (exstingUser) {
       return NextResponse.json({ message: "User alreay exists" }, { status: 400 });
     }
+    const validRoles = ["Coordinator", "mentor", "student", "faculty"];
+    const normalizedRole = role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+    if (!validRoles.includes(normalizedRole)) {
+      return NextResponse.json({ message: `Invalid role: ${role}` }, { status: 400 });
+    }
     const hashPassword = await bcrypt.hash(password, 10);
     const newUser = new User({
       username,
