@@ -56,7 +56,6 @@ const roleMenuItems = {
     { icon: Users, label: "Students", href: "/dashboard/faculty/students" },
     { icon: Calendar, label: "Hackathons", href: "/dashboard/faculty/hackathons" },
     { icon: CreditCard, label: "Payments", href: "/dashboard/faculty/payments" },
-    { icon: BarChart3, label: "Reports", href: "/dashboard/faculty/reports" },
   ],
   student: [
     { icon: Home, label: "Dashboard", href: "/dashboard/student" },
