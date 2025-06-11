@@ -22,49 +22,78 @@ export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+ const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
 
-    
-    try{
-      const res= await fetch("/api/login",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({email,password,role})
-      })
-      const data=await res.json()
-      if(!res.ok){
-        toast({title:"Login Failed",description:data.message})
-        setLoading(false)
-        return
+  try {
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, role }),
+    });
+
+    console.log("Response status:", res.status);
+    console.log("Response headers:", res.headers.get("Content-Type"));
+
+    if (!res.ok) {
+      const contentType = res.headers.get("Content-Type");
+      if (contentType && contentType.includes("application/json")) {
+        const data = await res.json();
+        toast({ title: "Login Failed", description: data.message });
+      } else {
+        const text = await res.text();
+        console.error("Non-JSON response:", text);
+        toast({ title: "Error", description: "Invalid server response" });
       }
-      toast({title:"Login Successfully",description:`Redirecting to ${data.roleData.role} dashboard...`})
-        localStorage.setItem("token",data.token)
-        switch (data.roleData.role) {
-        case "coordinator":
-          router.push("/dashboard/coordinator")
-          break
-        case "faculty":
-          router.push("/dashboard/faculty")
-          break
-        case "student":
-          router.push("/dashboard/student")
-          break
-        case "mentor":
-          router.push("/dashboard/mentor")
-          break
-        default:
-          router.push("/dashboard/coordinator")
-      }
-    }catch(error){
+      return;
+    }
 
-   console.error("Login error:", error);
-    toast({ title: "Error", description: "Something went wrong." });
-  }
+    const text = await res.text();
+    if (!text) {
+      console.error("Empty response body");
+      toast({ title: "Error", description: "No data received from server" });
+      return;
+    }
 
-  setLoading(false);
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (err) {
+      console.error("JSON parse error:", err);
+      toast({ title: "Error", description: "Invalid response format" });
+      return;
+    }
+
+    toast({
+      title: "Login Successful",
+      description: `Redirecting to ${data.roleData.role} dashboard...`,
+    });
+    localStorage.setItem("token", data.token);
+
+    switch (data.roleData.role) {
+      case "coordinator":
+        router.push("/dashboard/coordinator");
+        break;
+      case "faculty":
+        router.push("/dashboard/faculty");
+        break;
+      case "student":
+        router.push("/dashboard/student");
+        break;
+      case "mentor":
+        router.push("/dashboard/mentor");
+        break;
+      default:
+        router.push("/dashboard/coordinator");
+    }
+  } catch (error) {
+    console.error("Login error:", error);
+    toast({ title: "Error", description: "Failed to connect to server" });
+  } finally {
+    setLoading(false);
   }
+};
   const handleGoogleLoginSuccess = async (response: any) => {
   const accessToken = response.access_token;
 
