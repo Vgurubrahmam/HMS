@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import db from "@/lib/db"
 import User from "@/lib/models/User"
 import Registration from "@/lib/models/Registration"
-import bcrypt from "bcrypt"
+import bcryptjs from "bcryptjs"
 
 interface RegisterRequestBody {
   username: string
@@ -68,8 +68,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<JsonResponse>
       return NextResponse.json({ message: "Expertise is required for mentor role" }, { status: 400 })
     }
 
-    // Hash password
-    const hashPassword = await bcrypt.hash(password, 10)
+    // Hash password using bcryptjs
+    const saltRounds = 12
+    const hashPassword = await bcryptjs.hash(password, saltRounds)
 
     // Create user object
     const userData: any = {

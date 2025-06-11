@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useGoogleLogin } from '@react-oauth/google'
-import { jwtDecode } from 'jwt-decode'
+import { useGoogleLogin } from "@react-oauth/google"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,163 +21,158 @@ export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
 
- const handleLogin = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
 
-  try {
-    const res = await fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, role }),
-    });
-
-    console.log("Response status:", res.status);
-    console.log("Response headers:", res.headers.get("Content-Type"));
-
-    if (!res.ok) {
-      const contentType = res.headers.get("Content-Type");
-      if (contentType && contentType.includes("application/json")) {
-        const data = await res.json();
-        toast({ title: "Login Failed", description: data.message });
-      } else {
-        const text = await res.text();
-        console.error("Non-JSON response:", text);
-        toast({ title: "Error", description: "Invalid server response" });
-      }
-      return;
-    }
-
-    const text = await res.text();
-    if (!text) {
-      console.error("Empty response body");
-      toast({ title: "Error", description: "No data received from server" });
-      return;
-    }
-
-    let data;
     try {
-      data = JSON.parse(text);
-    } catch (err) {
-      console.error("JSON parse error:", err);
-      toast({ title: "Error", description: "Invalid response format" });
-      return;
-    }
+      console.log("Attempting login for:", email)
 
-    toast({
-      title: "Login Successful",
-      description: `Redirecting to ${data.roleData.role} dashboard...`,
-    });
-    localStorage.setItem("token", data.token);
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, role }),
+      })
 
-    switch (data.roleData.role) {
-      case "coordinator":
-        router.push("/dashboard/coordinator");
-        break;
-      case "faculty":
-        router.push("/dashboard/faculty");
-        break;
-      case "student":
-        router.push("/dashboard/student");
-        break;
-      case "mentor":
-        router.push("/dashboard/mentor");
-        break;
-      default:
-        router.push("/dashboard/coordinator");
-    }
-  } catch (error) {
-    console.error("Login error:", error);
-    toast({ title: "Error", description: "Failed to connect to server" });
-  } finally {
-    setLoading(false);
-  }
-};
-  const handleGoogleLoginSuccess = async (response: any) => {
-  const accessToken = response.access_token;
+      console.log("Login response status:", res.status)
 
-  if (!accessToken) {
-    toast({
-      title: "Google Sign-in Error",
-      description: "No access token received from Google",
-      variant: "destructive",
-    });
-    return;
-  }
+      if (!res.ok) {
+        const errorData = await res.json()
+        console.error("Login failed:", errorData)
+        toast({
+          title: "Login Failed",
+          description: errorData.message || "Invalid credentials",
+          variant: "destructive",
+        })
+        return
+      }
 
-  try {
-    // Get user info from Google
-    const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+      const data = await res.json()
+      console.log("Login successful")
 
-    const userInfo = await userInfoRes.json();
-
-    const googleData = {
-      username: userInfo.name,
-      image: userInfo.picture,
-      email: userInfo.email,
-      password: "guru",
-    };
-    
-
-    const serverResponse = await fetch("/api/google-signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(googleData),
-    });
-
-    const data = await serverResponse.json();
-
-    if (serverResponse.ok) {
-      localStorage.setItem("token", data.token);
       toast({
         title: "Login Successful",
-        description: "Redirecting to dashboard...",
-      });
-      router.push("/dashboard/coordinator");
-    } else {
-      toast({
-        title: "Signup failed",
-        description: data.message || "Try again",
-        variant: "destructive",
-      });
-    }
-  } catch (error) {
-    console.error("Google Login Error:", error);
-    toast({
-      title: "Error",
-      description: "Something went wrong during login.",
-      variant: "destructive",
-    });
-  }
-};
+        description: `Welcome back! Redirecting to ${data.roleData.role} dashboard...`,
+      })
 
- 
-const login = useGoogleLogin({
-  flow: "implicit",
-  onSuccess: handleGoogleLoginSuccess,
-  onError: () => toast({
-    title: "Google Sign-in Error",
-    description: "Failed to authenticate",
-    variant: "destructive",
-  }),
-});
+      // Store token
+      localStorage.setItem("token", data.token)
+
+      // Redirect based on role
+      const userRole = data.roleData.role.toLowerCase()
+      switch (userRole) {
+        case "coordinator":
+          router.push("/dashboard/coordinator")
+          break
+        case "faculty":
+          router.push("/dashboard/faculty")
+          break
+        case "student":
+          router.push("/dashboard/student")
+          break
+        case "mentor":
+          router.push("/dashboard/mentor")
+          break
+        default:
+          router.push("/dashboard/coordinator")
+      }
+    } catch (error: any) {
+      console.error("Login error:", error)
+      toast({
+        title: "Error",
+        description: "Failed to connect to server. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleLoginSuccess = async (response: any) => {
+    const accessToken = response.access_token
+
+    if (!accessToken) {
+      toast({
+        title: "Google Sign-in Error",
+        description: "No access token received from Google",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      // Get user info from Google
+      const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!userInfoRes.ok) {
+        throw new Error("Failed to fetch user info from Google")
+      }
+
+      const userInfo = await userInfoRes.json()
+
+      const googleData = {
+        username: userInfo.name,
+        image: userInfo.picture,
+        email: userInfo.email,
+        password: "guru",
+      }
+
+      const serverResponse = await fetch("/api/google-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(googleData),
+      })
+
+      const data = await serverResponse.json()
+
+      if (serverResponse.ok) {
+        localStorage.setItem("token", data.token)
+        toast({
+          title: "Login Successful",
+          description: "Welcome! Redirecting to dashboard...",
+        })
+        router.push("/dashboard/coordinator")
+      } else {
+        toast({
+          title: "Google Login Failed",
+          description: data.message || "Please try again",
+          variant: "destructive",
+        })
+      }
+    } catch (error: any) {
+      console.error("Google Login Error:", error)
+      toast({
+        title: "Error",
+        description: "Something went wrong during Google login.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const login = useGoogleLogin({
+    flow: "implicit",
+    onSuccess: handleGoogleLoginSuccess,
+    onError: () =>
+      toast({
+        title: "Google Sign-in Error",
+        description: "Failed to authenticate with Google",
+        variant: "destructive",
+      }),
+  })
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-
-
         <Card>
           <CardHeader>
             <div className="text-start">
               <Link href="/" className="inline-flex items-center gap-2 text-2xl font-bold mb-2">
                 <Code2 className="h-8 w-8 text-blue-600" />
-                <CardTitle>
-                  Welcome Back</CardTitle>
+                <CardTitle>Welcome Back</CardTitle>
               </Link>
             </div>
             <CardDescription>Enter your credentials to access your dashboard</CardDescription>
@@ -210,8 +204,8 @@ const login = useGoogleLogin({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Select value={role} onValueChange={setRole} required>
+                <Label htmlFor="role">Role (Optional)</Label>
+                <Select value={role} onValueChange={setRole}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
@@ -239,8 +233,8 @@ const login = useGoogleLogin({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-             <Button onClick={() => login()} variant="outline" className="w-full">
-     <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+              <Button onClick={() => login()} variant="outline" className="w-full" disabled={loading}>
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                     fill="#4285F4"
@@ -258,13 +252,14 @@ const login = useGoogleLogin({
                     fill="#EA4335"
                   />
                 </svg>
-   Google
-</Button>
+                Google
+              </Button>
               <Button variant="outline" type="button" disabled={loading}>
                 <Github className="mr-2 h-4 w-4" />
                 GitHub
               </Button>
             </div>
+
             <div className="flex justify-between items-center">
               <div className="mt-6 text-center">
                 <p className="text-sm text-muted-foreground">
@@ -285,8 +280,6 @@ const login = useGoogleLogin({
             </div>
           </CardContent>
         </Card>
-
-
       </div>
     </div>
   )
