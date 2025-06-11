@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -28,36 +27,54 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-
-
     setLoading(true)
 
-   
     try {
+      console.log("Submitting registration:", { ...formData, password: "[REDACTED]" })
+
       const res = await fetch("/api/registrations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
       })
-      const data = await res.json()
-      if (!res.ok) {
-        toast({ title: "SignUp   Failed", description: data.message })
-        setFormData({
-          username: "",
-          email: "",
-          password: "",
-          role: "",
-          studentId: "",
-          expertise: "",
-        })
-      }
-      else if (res.ok) {
 
-        toast({ title: data.message, description: "Your account has been created. Please sign in." })
-        router.push("/auth/login")
+      console.log("Response status:", res.status)
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        console.error("Registration failed:", errorData)
+        toast({
+          title: "Registration Failed",
+          description: errorData.message || "Something went wrong",
+          variant: "destructive",
+        })
+        return
       }
+
+      const data = await res.json()
+      console.log("Registration successful:", data)
+
+      toast({
+        title: "Success!",
+        description: data.message || "Your account has been created. Please sign in.",
+      })
+
+      // Reset form
+      setFormData({
+        username: "",
+        email: "",
+        password: "",
+        role: "",
+        studentId: "",
+        expertise: "",
+      })
+
+      // Redirect to login
+      router.push("/auth/login")
     } catch (error: any) {
+      console.error("Registration error:", error)
       toast({
         title: "Error",
         description: error.message || "Something went wrong during registration.",
@@ -75,8 +92,6 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-
-
         <Card>
           <CardHeader>
             <CardTitle>
@@ -91,7 +106,7 @@ export default function RegisterPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="username">Full Name</Label>
                   <Input
                     id="username"
                     placeholder="Enter your full name"
@@ -127,7 +142,6 @@ export default function RegisterPage() {
                   />
                 </div>
 
-
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
                   <Select value={formData.role} onValueChange={(value) => handleInputChange("role", value)} required>
@@ -135,19 +149,13 @@ export default function RegisterPage() {
                       <SelectValue placeholder="Select your role" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Coordinator">Coordinator</SelectItem>
+                      <SelectItem value="coordinator">Coordinator</SelectItem>
                       <SelectItem value="faculty">Faculty</SelectItem>
                       <SelectItem value="student">Student</SelectItem>
                       <SelectItem value="mentor">Mentor</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4">
-
-
-
               </div>
 
               {formData.role === "student" && (
@@ -175,8 +183,6 @@ export default function RegisterPage() {
                   />
                 </div>
               )}
-
-
 
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Creating Account..." : "Create Account"}
@@ -219,6 +225,7 @@ export default function RegisterPage() {
                 GitHub
               </Button>
             </div>
+
             <div className="flex justify-between items-center">
               <div className="mt-6 text-center">
                 <p className="text-sm text-muted-foreground">
@@ -232,15 +239,13 @@ export default function RegisterPage() {
                 <Button variant="ghost" asChild>
                   <Link href="/">
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back <span className="hidden md-block">to Home</span>
+                    Back to Home
                   </Link>
                 </Button>
               </div>
             </div>
           </CardContent>
         </Card>
-
-
       </div>
     </div>
   )
