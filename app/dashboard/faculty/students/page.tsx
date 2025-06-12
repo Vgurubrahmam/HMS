@@ -261,7 +261,7 @@ export default function FacultyStudentsPage() {
         </Card>
 
         {/* Students List */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-hidden">
           {filteredStudents.map((student) => (
             <Card key={student.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">
@@ -284,30 +284,33 @@ export default function FacultyStudentsPage() {
                       <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
                         <span>{student.year}</span>
                         <span>•</span>
-                        <span>{student.email}</span>
+                        <span className="truncate whitespace-nowrap overflow-hidden">{student.email}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-6 text-center">
-                    <div>
+                  <div className="flex items-center gap-6">
+                    <div className="text-center">
                       <p className="text-2xl font-bold text-blue-600">{student.hackathonsParticipated}</p>
                       <p className="text-xs text-gray-600">Hackathons</p>
                     </div>
-                    <div>
+                    <div className="text-center">
                       <p className="text-2xl font-bold text-green-600">{student.hackathonsWon}</p>
                       <p className="text-xs text-gray-600">Wins</p>
                     </div>
-                    <div>
+                    <div className="text-center">
                       <p className="text-2xl font-bold text-purple-600">${student.totalPayments}</p>
                       <p className="text-xs text-gray-600">Total Paid</p>
                     </div>
-                    <div>
+                    <div className="text-center">
                       <Badge className={getPaymentStatusColor(student.paymentStatus)}>{student.paymentStatus}</Badge>
                       {student.pendingPayments > 0 && (
                         <p className="text-xs text-red-600 mt-1">${student.pendingPayments} pending</p>
                       )}
                     </div>
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedStudent(student)}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
 
