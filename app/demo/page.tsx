@@ -826,7 +826,7 @@ export default function DemoPage() {
                 Back to Home
               </Link>
             </Button> */}
-            <div>
+            <div className="flex flex-col gap-4">
               <h1 className="text-3xl font-bold text-white dark:text-black">Interactive Demo</h1>
               <p className="text-muted-foreground">
                 Explore the Hackathon Management System from different perspectives

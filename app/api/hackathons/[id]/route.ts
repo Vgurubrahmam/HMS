@@ -18,7 +18,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       data: hackathon,
     })
   } catch (error) {
-    console.error("Error fetching hackathon:", error)
+    // console.error("Error fetching hackathon:", error)
     return NextResponse.json({ success: false, error: "Failed to fetch hackathon" }, { status: 500 })
   }
 }
@@ -56,14 +56,14 @@ export async function PUT(
     })
 
     if (!updatedHackathon) {
-      console.error("Hackathon not found:", id)
+      // console.error("Hackathon not found:", id)
       return NextResponse.json({ message: "Hackathon not found", error: "Hackathon not found" }, { status: 400 })
     }
 
-    console.log("Hackathon updated successfully:", updatedHackathon)
+    // console.log("Hackathon updated successfully:", updatedHackathon)
     return NextResponse.json({ message: "Hackathon updated successfully", hackathon: updatedHackathon }, { status: 201 })
   } catch (error) {
-    console.error("Error updating hackathon:", error)
+    // console.error("Error updating hackathon:", error)
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 })
   }
 }
@@ -85,7 +85,7 @@ export async function DELETE(
   await db();
 
   const { id } = params;
-  console.log(id);
+  // console.log(id);
   
   if (!mongoose.isValidObjectId(id)) {
     return NextResponse.json({ message: "Invalid Hackathon ID" }, { status: 400 });

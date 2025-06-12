@@ -32,15 +32,15 @@ interface TokenPayload {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  console.log("API /api/google-signup called")
+  // console.log("API /api/google-signup called")
 
   try {
     // Connect to database with better error handling
     try {
       await dbConnect()
-      console.log("Database connected successfully")
+      // console.log("Database connected successfully")
     } catch (dbError: any) {
-      console.error("Database connection error:", dbError)
+      // console.error("Database connection error:", dbError)
       return NextResponse.json(
         {
           message: "Database connection failed",
@@ -51,22 +51,22 @@ export async function POST(req: Request): Promise<Response> {
     }
 
     const userInfo: UserInfo = await req.json()
-    console.log("Google user info:", {
-      ...userInfo,
-      password: "[REDACTED]",
-      isExistingUser: userInfo.isExistingUser,
-    })
+    // console.log("Google user info:", {
+    //   ...userInfo,
+    //   password: "[REDACTED]",
+    //   isExistingUser: userInfo.isExistingUser,
+    // })
 
     // Check if user already exists
     let user = await User.findOne({ email: userInfo.email })
 
     if (user) {
       // Existing user - use their stored role and update profile if needed
-      console.log("✅ Existing user found:", {
-        email: user.email,
-        role: user.role,
-        username: user.username,
-      })
+      // console.log("✅ Existing user found:", {
+      //   email: user.email,
+      //   role: user.role,
+      //   username: user.username,
+      // })
 
       // Update user's profile image and name if they've changed
       let userUpdated = false
@@ -74,18 +74,18 @@ export async function POST(req: Request): Promise<Response> {
       if (user.image !== userInfo.image && userInfo.image) {
         user.image = userInfo.image
         userUpdated = true
-        console.log("Updated user's profile image")
+        // console.log("Updated user's profile image")
       }
 
       if (user.username !== userInfo.username && userInfo.username) {
         user.username = userInfo.username
         userUpdated = true
-        console.log("Updated user's username")
+        // console.log("Updated user's username")
       }
 
       if (userUpdated) {
         await user.save()
-        console.log("User profile updated successfully")
+        // console.log("User profile updated successfully")
       }
 
       // Generate token with existing user data
@@ -114,7 +114,7 @@ export async function POST(req: Request): Promise<Response> {
       })
     } else {
       // New user - validate and use the provided role
-      console.log("❌ New user detected, creating account...")
+      // console.log("❌ New user detected, creating account...")
 
       if (!userInfo.role) {
         return NextResponse.json(
@@ -156,11 +156,11 @@ export async function POST(req: Request): Promise<Response> {
       })
 
       await user.save()
-      console.log("✅ New user created via Google signup:", {
-        email: user.email,
-        role: normalizedRole,
-        username: user.username,
-      })
+      // console.log("✅ New user created via Google signup:", {
+      //   email: user.email,
+      //   role: normalizedRole,
+      //   username: user.username,
+      // })
 
       // Generate token for new user
       const token: string = jwt.sign(
@@ -188,7 +188,7 @@ export async function POST(req: Request): Promise<Response> {
       })
     }
   } catch (error: any) {
-    console.error("Google signup error:", error)
+    // console.error("Google signup error:", error)
     return NextResponse.json(
       {
         message: "Google login failed",

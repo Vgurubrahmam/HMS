@@ -66,7 +66,7 @@ export async function POST(req: Request): Promise<Response> {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error creating hackathon:", error);
+    // console.error("Error creating hackathon:", error);
     return NextResponse.json(
       { message: "Internal server error" } as HackathonResponse,
       { status: 500 }
@@ -111,7 +111,7 @@ export async function GET(
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error fetching hackathons:", error);
+    // console.error("Error fetching hackathons:", error);
     return NextResponse.json({ message: "Internal Server Error" } as HackathonsResponse);
   }
 }

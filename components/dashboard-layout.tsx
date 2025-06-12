@@ -217,7 +217,7 @@ useEffect(() => {
       <div className="lg:ml-64">
         {/* Header */}
         <header className="bg-white shadow-sm border-b h-16 flex items-center justify-between px-6 ">
-          <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden">
+          <Button  size="icon" onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden">
             <Menu className="h-5 w-5" />
           </Button>
 

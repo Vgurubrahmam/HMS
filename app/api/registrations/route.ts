@@ -22,20 +22,20 @@ interface JsonResponse {
 
 // POST method for user registration
 export async function POST(req: NextRequest): Promise<NextResponse<JsonResponse>> {
-  console.log("API /api/registrations POST called")
+  // console.log("API /api/registrations POST called")
 
   try {
     // Connect to database
     await db()
-    console.log("Database connected successfully")
+    // console.log("Database connected successfully")
 
     // Parse request body
     let body: RegisterRequestBody
     try {
       body = await req.json()
-      console.log("Request body:", { ...body, password: "[REDACTED]" })
+      // console.log("Request body:", { ...body, password: "[REDACTED]" })
     } catch (error) {
-      console.error("Invalid request body:", error)
+      // console.error("Invalid request body:", error)
       return NextResponse.json({ message: "Invalid JSON payload" }, { status: 400 })
     }
 
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<JsonResponse>
     const newUser = new User(userData)
     await newUser.save()
 
-    console.log("User registered successfully:", { email, role: normalizedRole })
+    // console.log("User registered successfully:", { email, role: normalizedRole })
 
     return NextResponse.json(
       {
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<JsonResponse>
       { status: 201 },
     )
   } catch (error) {
-    console.error("Server error:", error)
+    // console.error("Server error:", error)
     return NextResponse.json(
       { message: "Server error", error: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 },
@@ -113,11 +113,11 @@ export async function POST(req: NextRequest): Promise<NextResponse<JsonResponse>
 
 // GET method for fetching registrations
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  console.log("API /api/registrations GET called")
+  // console.log("API /api/registrations GET called")
 
   try {
     await db()
-    console.log("Database connected successfully")
+    // console.log("Database connected successfully")
 
     const { searchParams } = new URL(req.url)
     const user = searchParams.get("user")
@@ -150,10 +150,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       },
     }
 
-    console.log("Fetch registrations successful")
+    // console.log("Fetch registrations successful")
     return NextResponse.json(response)
   } catch (error) {
-    console.error("Server error while fetching registrations:", error)
+    // console.error("Server error while fetching registrations:", error)
     return NextResponse.json({ success: false, error: "Server error" }, { status: 500 })
   }
 }

@@ -26,14 +26,14 @@ interface LoginResponse {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  console.log("API /api/login called")
+  // console.log("API /api/login called")
 
   // Initialize database connection
   try {
     await db()
-    console.log("Database connected successfully")
+    // console.log("Database connected successfully")/
   } catch (error) {
-    console.error("Database connection error:", error)
+    // console.error("Database connection error:", error)
     return NextResponse.json({ message: "Database connection failed" }, { status: 500 })
   }
 
@@ -42,9 +42,9 @@ export async function POST(req: Request): Promise<Response> {
     let body: LoginRequestBody
     try {
       body = await req.json()
-      console.log("Request body:", { ...body, password: "[REDACTED]" })
+      // console.log("Request body:", { ...body, password: "[REDACTED]" })
     } catch (error) {
-      console.error("Invalid request body:", error)
+      // console.error("Invalid request body:", error)
       return NextResponse.json({ message: "Invalid JSON payload" }, { status: 400 })
     }
 
@@ -100,10 +100,10 @@ export async function POST(req: Request): Promise<Response> {
       message: "User logged in successfully",
     }
 
-    console.log("Login successful for user:", email)
+    // console.log("Login successful for user:", email)
     return NextResponse.json(response, { status: 200 })
   } catch (error: any) {
-    console.error("Server error:", error)
+    // console.error("Server error:", error)
     return NextResponse.json({ message: "Server error", error: error.message }, { status: 500 })
   }
 }

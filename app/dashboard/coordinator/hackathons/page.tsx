@@ -1038,10 +1038,16 @@ export default function CoordinatorHackathonsPage() {
                           <span className="text-gray-600">Status:</span>
                           <Badge className={getStatusColor(selectedHackathon.status)}>{selectedHackathon.status}</Badge>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex flex-col justify-between">
                           <span className="text-gray-600">Duration:</span>
                           <span>
-                            {selectedHackathon.startDate} - {selectedHackathon.endDate}
+                            Start Date : {formatDate(selectedHackathon.startDate)}
+                          </span>
+                          <span>
+                            End Date : {formatDate(selectedHackathon.endDate)}
+                          </span>
+                          <span>
+                            RegistrationDeadline : {formatDate(selectedHackathon.registrationDeadline)}
                           </span>
                         </div>
                         <div className="flex justify-between">

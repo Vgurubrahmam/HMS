@@ -86,7 +86,7 @@ export default function LoginPageAlternative() {
     flow: "auth-code",
     onSuccess: async (codeResponse) => {
       setGoogleLoading(true)
-      console.log("Google auth code received:", codeResponse.code)
+      // console.log("Google auth code received:", codeResponse.code)
 
       try {
         // Send the authorization code to your backend
@@ -133,7 +133,7 @@ export default function LoginPageAlternative() {
           })
         }
       } catch (error: any) {
-        console.error("Google login error:", error)
+        // console.error("Google login error:", error)
         toast({
           title: "Google Login Error",
           description: "Something went wrong during Google login.",
@@ -144,7 +144,7 @@ export default function LoginPageAlternative() {
       }
     },
     onError: (error) => {
-      console.error("Google login error:", error)
+      // console.error("Google login error:", error)
       setGoogleLoading(false)
       toast({
         title: "Google Sign-in Error",

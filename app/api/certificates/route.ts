@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("Error fetching certificates:", error)
+    // console.error("Error fetching certificates:", error)
     return NextResponse.json({ success: false, error: "Failed to fetch certificates" }, { status: 500 })
   }
 }
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     )
   } catch (error) {
-    console.error("Error creating certificate:", error)
+    // console.error("Error creating certificate:", error)
     return NextResponse.json({ success: false, error: "Failed to create certificate" }, { status: 500 })
   }
 }
