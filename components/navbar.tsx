@@ -46,6 +46,17 @@ export function Navbar() {
           </p>
         </Link>
 
+        {/* Desktop menu */}
+        <div className="hidden md:flex items-center gap-4">
+          <Button className="bg-none">
+                <Link href="/auth/login">Login</Link>
+              </Button>
+              <Button className="">
+                <Link href="/auth/register">Sign Up</Link>
+              </Button>
+          <ModeToggle />
+        </div>
+
         <div className="flex items-center gap-4 md:hidden">
           <Button
             className="bg-none"

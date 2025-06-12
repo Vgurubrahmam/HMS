@@ -54,7 +54,7 @@ function GoogleLoginContent() {
   // Handle successful Google authentication
   const handleGoogleSuccess = async (tokenResponse: any) => {
     setGoogleLoading(true)
-    console.log("Google login response received")
+    // console.log("Google login response received")
 
     try {
       const accessToken = tokenResponse.access_token
@@ -64,7 +64,7 @@ function GoogleLoginContent() {
       }
 
       // Get user info from Google
-      console.log("Fetching user info from Google...")
+      // console.log("Fetching user info from Google...")
       const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -78,17 +78,17 @@ function GoogleLoginContent() {
       }
 
       const userInfo = await userInfoRes.json()
-      console.log("Google user info received:", { email: userInfo.email, name: userInfo.name })
+      // console.log("Google user info received:", { email: userInfo.email, name: userInfo.name })
 
       // Check if user exists in our database
-      console.log("Checking if user exists in database...")
+      // console.log("Checking if user exists in database...")
       const { exists, user } = await checkUserExists(userInfo.email)
 
       let userRole: string
 
       if (exists && user) {
         // User exists, use their existing role
-        console.log("✅ Existing user found, using stored role:", user.role)
+        // console.log("✅ Existing user found, using stored role:", user.role)
         userRole = user.role
         toast({
           title: "Welcome back!",
@@ -97,7 +97,7 @@ function GoogleLoginContent() {
         setShowRoleRequiredMessage(false)
       } else {
         // New user, check if role is selected
-        console.log("❌ New user detected, checking role selection...")
+        // console.log("❌ New user detected, checking role selection...")
         if (!role) {
           setGoogleLoading(false)
           setShowRoleRequiredMessage(true)
@@ -109,7 +109,7 @@ function GoogleLoginContent() {
           return
         }
         userRole = role
-        console.log("✅ New user with selected role:", role)
+        // console.log("✅ New user with selected role:", role)
         toast({
           title: "Creating account...",
           description: `Setting up your ${role} account...`,
@@ -127,7 +127,7 @@ function GoogleLoginContent() {
         isExistingUser: exists,
       }
 
-      console.log("Sending data to server with role:", userRole)
+      // console.log("Sending data to server with role:", userRole)
       const serverResponse = await fetch("/api/google-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -135,7 +135,7 @@ function GoogleLoginContent() {
       })
 
       const data = await serverResponse.json()
-      console.log("Server response:", data)
+      // console.log("Server response:", data)
 
       if (serverResponse.ok) {
         localStorage.setItem("token", data.token)
@@ -162,7 +162,7 @@ function GoogleLoginContent() {
             router.push("/dashboard/coordinator")
         }
       } else {
-        console.error("Server error:", data)
+        // console.error("Server error:", data)
         toast({
           title: "Google Login Failed",
           description: data.message || "Server error occurred",
@@ -170,7 +170,7 @@ function GoogleLoginContent() {
         })
       }
     } catch (error: any) {
-      console.error("Google Login Error:", error)
+      // console.error("Google Login Error:", error)
       toast({
         title: "Google Login Error",
         description: error.message || "Something went wrong during Google login.",

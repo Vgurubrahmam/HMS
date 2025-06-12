@@ -66,19 +66,19 @@ export function useRegistrations(params?: UseRegistrationsParams): UseRegistrati
  const fetchRegistrations = async (): Promise<void> => {
   try {
     setLoading(true);
-    console.log("Fetching registrations with params:", params);
+    // console.log("Fetching registrations with params:", params);
     const response: ApiResponse<{ registrations: Registration[] }> = await api.getRegistrations(params); // Line 26
 
     if (response.success) {
-      console.log("Fetch registrations response:", response);
+      // console.log("Fetch registrations response:", response);
       setRegistrations(response.data?.registrations || []);
       if (response.pagination) {
         setPagination(response.pagination);
-        console.log("Pagination updated:", response.pagination);
+        // console.log("Pagination updated:", response.pagination);
       }
       setError(null);
     } else {
-      console.error("Fetch registrations failed:", response.error);
+      // console.error("Fetch registrations failed:", response.error);
       setError(response.error || "Failed to fetch registrations");
       toast({
         title: "Error",
@@ -87,7 +87,7 @@ export function useRegistrations(params?: UseRegistrationsParams): UseRegistrati
       });
     }
   } catch (err: any) {
-    console.error("Fetch registrations error:", err);
+    // console.error("Fetch registrations error:", err);
     const errorText = err.message || "An error occurred while fetching registrations";
     setError(errorText);
     toast({
@@ -97,7 +97,7 @@ export function useRegistrations(params?: UseRegistrationsParams): UseRegistrati
     });
   } finally {
     setLoading(false);
-    console.log("Fetch registrations completed");
+    // console.log("Fetch registrations completed");
   }
 };
 
@@ -122,9 +122,9 @@ export function useRegistrations(params?: UseRegistrationsParams): UseRegistrati
 
   const createRegistration = async (data: CreateRegistrationData): Promise<ApiResponse> => {
     try {
-      console.log("Creating registration with data:", data);
+      // console.log("Creating registration with data:", data);
       const response: ApiResponse = await api.createRegistration(data);
-      console.log("Create registration response:", response);
+      // console.log("Create registration response:", response);
       if (response.success) {
         await fetchRegistrations(); // Refresh the list
         toast({

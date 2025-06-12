@@ -25,7 +25,7 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      console.log("Attempting login for:", email)
+      // console.log("Attempting login for:", email)
 
       const res = await fetch("/api/login", {
         method: "POST",
@@ -33,7 +33,7 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password, role }),
       })
 
-      console.log("Login response status:", res.status)
+      // console.log("Login response status:", res.status)
 
       if (!res.ok) {
         const errorData = await res.json()
@@ -47,7 +47,7 @@ export default function LoginPage() {
       }
 
       const data = await res.json()
-      console.log("Login successful")
+      // console.log("Login successful")
 
       toast({
         title: "Login Successful",
