@@ -265,7 +265,7 @@ export default function FacultyStudentsPage() {
           {filteredStudents.map((student) => (
             <Card key={student.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap gap-4 items-center justify-between">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-12 w-12">
                       <AvatarImage src={student.avatar || "/placeholder.svg"} />

@@ -49,6 +49,36 @@ export default function FacultyHackathonsPage() {
 
   const { toast } = useToast()
 
+  const fetchHackathons = async () => {
+    try {
+      const res = await fetch("/api/hackathons", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      })
+      const data = await res.json()
+
+      if (res.ok) {
+        setHackathons(data.data)
+        calculateStats(data.data)
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: data.message || "Error fetching hackathons"
+        })
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Something went wrong while fetching hackathons"
+
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     fetchHackathons()
   }, [])
@@ -56,34 +86,6 @@ export default function FacultyHackathonsPage() {
   useEffect(() => {
     filterHackathons()
   }, [hackathons, searchTerm, statusFilter, difficultyFilter])
-
-  const fetchHackathons = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/hackathons')
-      const result = await response.json()
-
-      if (result.success) {
-        setHackathons(result.data || [])
-        calculateStats(result.data || [])
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to fetch hackathon data",
-          variant: "destructive"
-        })
-      }
-    } catch (error) {
-      console.error('Error fetching hackathons:', error)
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive"
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const calculateStats = (hackathonData: HackathonData[]) => {
     const totalHackathons = hackathonData.length
@@ -105,7 +107,7 @@ export default function FacultyHackathonsPage() {
     let filtered = hackathons
 
     if (searchTerm) {
-      filtered = filtered.filter(hackathon =>
+      filtered = filtered.filter((hackathon: HackathonData) =>
         hackathon.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         hackathon.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         hackathon.venue.toLowerCase().includes(searchTerm.toLowerCase())
@@ -113,11 +115,11 @@ export default function FacultyHackathonsPage() {
     }
 
     if (statusFilter !== "all") {
-      filtered = filtered.filter(hackathon => hackathon.status === statusFilter)
+      filtered = filtered.filter((hackathon: HackathonData) => hackathon.status === statusFilter)
     }
 
     if (difficultyFilter !== "all") {
-      filtered = filtered.filter(hackathon => hackathon.difficulty === difficultyFilter)
+      filtered = filtered.filter((hackathon: HackathonData) => hackathon.difficulty === difficultyFilter)
     }
 
     setFilteredHackathons(filtered)

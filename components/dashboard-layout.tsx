@@ -184,7 +184,7 @@ useEffect(() => {
               .join("")}
           </AvatarFallback>
         </Avatar>
-        <div className="text-left hidden sm:block">
+        <div className="text-left">
           <p className="text-sm font-medium">{userName}</p>
           <p className="text-xs text-gray-500">{userRole}</p>
         </div>
