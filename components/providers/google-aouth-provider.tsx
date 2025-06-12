@@ -21,8 +21,10 @@ export function GoogleOAuthWrapper({ children }: GoogleOAuthWrapperProps) {
     }
   }, [clientId])
 
-  // Only render on client-side to avoid hydration issues
-  if (!mounted) return <>{children}</>
+  // Prevent SSR for Google OAuth components
+  if (!mounted) {
+    return <>{children}</>
+  }
 
   if (!clientId) {
     console.error("Google Client ID is not configured")
@@ -32,9 +34,9 @@ export function GoogleOAuthWrapper({ children }: GoogleOAuthWrapperProps) {
 
   return (
     <GoogleOAuthProvider
-      clientId={clientId}
+      clientId={clientId as string}
       onScriptLoadError={() => console.error("Failed to load Google OAuth script")}
-      onScriptLoadSuccess={() => console.log("Google OAuth script loaded successfully")}
+      onScriptLoadSuccess={(): void => console.log("Google OAuth script loaded successfully")}
     >
       {children}
     </GoogleOAuthProvider>

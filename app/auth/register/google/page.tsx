@@ -11,8 +11,9 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { GoogleLoginButton } from "@/components/google-login-button"
+import { ClientOnlyGoogleAuth } from "@/components/client-only-google-auth"
 
-export default function GoogleRegisterPage() {
+function GoogleRegisterContent() {
   const [role, setRole] = useState("")
   const [studentId, setStudentId] = useState("")
   const [expertise, setExpertise] = useState("")
@@ -47,6 +48,125 @@ export default function GoogleRegisterPage() {
   }
 
   return (
+    <div className="space-y-6">
+      {/* Role Selection */}
+      <div className="space-y-2">
+        <Label htmlFor="role">
+          Role <span className="text-red-500">*</span>
+        </Label>
+        <Select
+          value={role}
+          onValueChange={(value) => {
+            setRole(value)
+            setShowRoleRequiredMessage(false)
+            // Reset role-specific fields when role changes
+            setStudentId("")
+            setExpertise("")
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select your role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="coordinator">Coordinator</SelectItem>
+            <SelectItem value="faculty">Faculty</SelectItem>
+            <SelectItem value="student">Student</SelectItem>
+            <SelectItem value="mentor">Mentor</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Student ID field for students */}
+      {role === "student" && (
+        <div className="space-y-2">
+          <Label htmlFor="studentId">
+            Student ID <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            id="studentId"
+            placeholder="Enter your student ID"
+            value={studentId}
+            onChange={(e) => setStudentId(e.target.value)}
+            required
+          />
+        </div>
+      )}
+
+      {/* Expertise field for mentors */}
+      {role === "mentor" && (
+        <div className="space-y-2">
+          <Label htmlFor="expertise">
+            Expertise Areas <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            id="expertise"
+            placeholder="e.g., Web Development, AI/ML, Mobile Apps"
+            value={expertise}
+            onChange={(e) => setExpertise(e.target.value)}
+            required
+          />
+        </div>
+      )}
+
+      {/* Show validation message */}
+      {showRoleRequiredMessage && (
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+          <div className="flex items-start">
+            <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-medium text-yellow-800">Complete Required Fields</h3>
+              <p className="text-sm text-yellow-700 mt-1">
+                Please fill in all required information before continuing with Google signup.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Google Signup Button */}
+      <GoogleLoginButton
+        selectedRole={role}
+        studentId={studentId}
+        expertise={expertise}
+        onSuccess={handleGoogleSignupSuccess}
+        onRoleRequired={handleRoleRequired}
+        className="w-full h-12"
+        size="lg"
+        mode="signup"
+      />
+
+      {/* Form validation indicator */}
+      {role && (
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground">
+            {isFormValid() ? (
+              <span className="text-green-600">✓ Ready to sign up with Google</span>
+            ) : (
+              <span className="text-orange-600">Please complete all required fields above</span>
+            )}
+          </p>
+        </div>
+      )}
+
+      {/* Alternative Signup Options */}
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">Or</span>
+        </div>
+      </div>
+
+      <Button variant="outline" className="w-full" asChild>
+        <Link href="/auth/register">Sign up with Email & Password</Link>
+      </Button>
+    </div>
+  )
+}
+
+export default function GoogleRegisterPage() {
+  return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Card>
@@ -60,117 +180,9 @@ export default function GoogleRegisterPage() {
             <CardDescription>Create your HackathonMS account using Google</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
-              {/* Role Selection */}
-              <div className="space-y-2">
-                <Label htmlFor="role">
-                  Role <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={role}
-                  onValueChange={(value) => {
-                    setRole(value)
-                    setShowRoleRequiredMessage(false)
-                    // Reset role-specific fields when role changes
-                    setStudentId("")
-                    setExpertise("")
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="coordinator">Coordinator</SelectItem>
-                    <SelectItem value="faculty">Faculty</SelectItem>
-                    <SelectItem value="student">Student</SelectItem>
-                    <SelectItem value="mentor">Mentor</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Student ID field for students */}
-              {role === "student" && (
-                <div className="space-y-2">
-                  <Label htmlFor="studentId">
-                    Student ID <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="studentId"
-                    placeholder="Enter your student ID"
-                    value={studentId}
-                    onChange={(e) => setStudentId(e.target.value)}
-                    required
-                  />
-                </div>
-              )}
-
-              {/* Expertise field for mentors */}
-              {role === "mentor" && (
-                <div className="space-y-2">
-                  <Label htmlFor="expertise">
-                    Expertise Areas <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="expertise"
-                    placeholder="e.g., Web Development, AI/ML, Mobile Apps"
-                    value={expertise}
-                    onChange={(e) => setExpertise(e.target.value)}
-                    required
-                  />
-                </div>
-              )}
-
-              {/* Show validation message */}
-              {showRoleRequiredMessage && (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-                  <div className="flex items-start">
-                    <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
-                    <div>
-                      <h3 className="text-sm font-medium text-yellow-800">Complete Required Fields</h3>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        Please fill in all required information before continuing with Google signup.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Google Signup Button */}
-              <GoogleLoginButton
-                selectedRole={role}
-                onSuccess={handleGoogleSignupSuccess}
-                onRoleRequired={handleRoleRequired}
-                className="w-full h-12"
-                size="lg"
-              />
-
-              {/* Form validation indicator */}
-              {role && (
-                <div className="text-center">
-                  <p className="text-xs text-muted-foreground">
-                    {isFormValid() ? (
-                      <span className="text-green-600">✓ Ready to sign up with Google</span>
-                    ) : (
-                      <span className="text-orange-600">Please complete all required fields above</span>
-                    )}
-                  </p>
-                </div>
-              )}
-
-              {/* Alternative Signup Options */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">Or</span>
-                </div>
-              </div>
-
-              <Button variant="outline" className="w-full" asChild>
-                <Link href="/auth/register">Sign up with Email & Password</Link>
-              </Button>
-            </div>
+            <ClientOnlyGoogleAuth>
+              <GoogleRegisterContent />
+            </ClientOnlyGoogleAuth>
 
             <div className="flex justify-between items-center mt-6">
               <div className="text-center">
