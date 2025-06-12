@@ -353,8 +353,8 @@ export default function FacultyHackathonsPage() {
                           <p className="text-2xl font-bold text-purple-600">{hackathon.prizes?.length || 0}</p>
                           <p className="text-xs text-gray-600">Prizes</p>
                         </div>
-                        <div className="p-3 bg-orange-50 rounded-lg">
-                          <p className="text-2xl font-bold text-orange-600">${hackathon.registrationFee * hackathon.currentParticipants}</p>
+                        <div className="p-3 bg-orange-50 text-center rounded-lg">
+                          <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl  font-bold text-orange-600">${hackathon.registrationFee * hackathon.currentParticipants}</p>
                           <p className="text-xs text-gray-600">Revenue</p>
                         </div>
                       </div>
