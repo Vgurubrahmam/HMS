@@ -5,7 +5,7 @@ export const GOOGLE_CONFIG = {
     process.env.NODE_ENV === "production"
       ? process.env.NEXT_PUBLIC_VERCEL_URL
         ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-        : "https://hms-livid.vercel.app" // Your actual deployed URL
+        : "https://hms-livid.vercel.app/" // Replace with your actual Vercel URL
       : "http://localhost:3000",
 
   // Scopes needed
@@ -26,8 +26,7 @@ export const getGoogleRedirectUri = () => {
 export const getAllRedirectUris = () => {
   return [
     "http://localhost:3000",
-    "https://hms-livid.vercel.app",
+    "https://hms-livid.vercel.app", // Replace with your actual URL
     // Add your custom domain if you have one
-    // "https://yourdomain.com"
   ]
 }
