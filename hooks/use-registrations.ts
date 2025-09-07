@@ -5,7 +5,7 @@ import { toast } from "@/hooks/use-toast"; // Adjust based on your toast library
 import { api } from "@/lib/api"; // Adjust path to api.ts
 
 interface Registration {
-  id: string; // Use string for MongoDB ObjectId
+  _id: string; // Use string for MongoDB ObjectId
   user: string; // User ID as string
   hackathon: string; // Hackathon ID as string
   paymentStatus: string;
@@ -122,9 +122,9 @@ export function useRegistrations(params?: UseRegistrationsParams): UseRegistrati
 
   const createRegistration = async (data: CreateRegistrationData): Promise<ApiResponse> => {
     try {
-      // console.log("Creating registration with data:", data);
+      console.log("Creating registration with data:", data);
       const response: ApiResponse = await api.createRegistration(data);
-      // console.log("Create registration response:", response);
+      console.log("Create registration response:", response);
       if (response.success) {
         await fetchRegistrations(); // Refresh the list
         toast({

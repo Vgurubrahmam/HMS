@@ -1,104 +1,144 @@
-import { type NextRequest, NextResponse } from "next/server"
-import db from "@/lib/db"
-import Hackathon from "@/lib/models/Hackathon"
-import mongoose from "mongoose"
+import { type NextRequest, NextResponse } from "next/server";
+import db from "@/lib/db";
+import Hackathon from "@/lib/models/Hackathon";
+import mongoose from "mongoose";
+
+interface HackathonData {
+  _id: string;
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  registrationDeadline: string;
+  registrationFee: number;
+  maxParticipants: number;
+  venue: string;
+  categories: string[];
+  prizes: string[];
+  currentParticipants: number;
+  mentorAssigned: string;
+  teamsFormed: string;
+  status: string;
+  difficulty: string;
+  organizer?: { name: string };
+  requirements?: string[];
+}
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    await db()
+    await db();
 
-    const hackathon = await Hackathon.findById(params.id)
+    if (!mongoose.isValidObjectId(params.id)) {
+      return NextResponse.json({ success: false, message: "Invalid Hackathon ID", error: "Invalid Hackathon ID" }, { status: 400 });
+    }
+
+    const hackathon = await Hackathon.findById(params.id);
 
     if (!hackathon) {
-      return NextResponse.json({ success: false, error: "Hackathon not found" }, { status: 404 })
+      return NextResponse.json({ success: false, message: "Hackathon not found", error: "Hackathon not found" }, { status: 404 });
     }
 
     return NextResponse.json({
       success: true,
+      message: "Hackathon fetched successfully",
       data: hackathon,
-    })
-  } catch (error) {
-    // console.error("Error fetching hackathon:", error)
-    return NextResponse.json({ success: false, error: "Failed to fetch hackathon" }, { status: 500 })
+    });
+  } catch (error: any) {
+    console.error("Error fetching hackathon:", {
+      message: error.message,
+      stack: error.stack,
+    });
+    return NextResponse.json({ success: false, message: "Failed to fetch hackathon", error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }
-
-// put method
 
 interface PutParams {
   params: {
-    id: string
-  }
+    id: string;
+  };
 }
 
 interface PutResponse {
-  message: string
-  hackathon?: any
-  error?: string
+  success: boolean;
+  message: string;
+  hackathon?: HackathonData;
+  error?: string;
 }
 
 export async function PUT(
   req: NextRequest,
   { params }: PutParams
 ): Promise<NextResponse<PutResponse>> {
-  await db()
-  const id = params.id
-  if (!mongoose.isValidObjectId(id)) {
-    return NextResponse.json({ message: "Invalid Hackathon ID" }, { status: 400 })
-  }
-  const body = await req.json()
   try {
-    // Added logging for debugging the PUT method
-    console.log("Incoming PUT request body:", body);
+    await db();
 
-    const updatedHackathon = await Hackathon.findByIdAndUpdate(id, body, {
-      new: true
-    })
-
-    if (!updatedHackathon) {
-      // console.error("Hackathon not found:", id)
-      return NextResponse.json({ message: "Hackathon not found", error: "Hackathon not found" }, { status: 400 })
+    if (!mongoose.isValidObjectId(params.id)) {
+      return NextResponse.json({ success: false, message: "Invalid Hackathon ID", error: "Invalid Hackathon ID" }, { status: 400 });
     }
 
-    // console.log("Hackathon updated successfully:", updatedHackathon)
-    return NextResponse.json({ message: "Hackathon updated successfully", hackathon: updatedHackathon }, { status: 201 })
-  } catch (error) {
-    // console.error("Error updating hackathon:", error)
-    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 })
+    const body = await req.json();
+
+    // Optional: Add validation for body fields similar to POST (e.g., dates, numerics, enums)
+    // For brevity, assuming partial updates; you can extend as needed
+
+    const updatedHackathon = await Hackathon.findByIdAndUpdate(params.id, body, {
+      new: true,
+      runValidators: true, // Ensure schema validators run on update
+    });
+
+    if (!updatedHackathon) {
+      return NextResponse.json({ success: false, message: "Hackathon not found", error: "Hackathon not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Hackathon updated successfully",
+      hackathon: updatedHackathon,
+    }, { status: 200 });
+  } catch (error: any) {
+    console.error("Error updating hackathon:", {
+      message: error.message,
+      stack: error.stack,
+    });
+    return NextResponse.json({ success: false, message: "Failed to update hackathon", error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }
 
 interface DeleteParams {
   params: {
-    id: string
-  }
+    id: string;
+  };
 }
 
 interface DeleteResponse {
-  message: string
+  success: boolean;
+  message: string;
+  error?: string;
 }
 
 export async function DELETE(
   req: NextRequest,
   { params }: DeleteParams
 ): Promise<NextResponse<DeleteResponse>> {
-  await db();
-
-  const { id } = params;
-  // console.log(id);
-  
-  if (!mongoose.isValidObjectId(id)) {
-    return NextResponse.json({ message: "Invalid Hackathon ID" }, { status: 400 });
-  }
-
   try {
-    const deleted = await Hackathon.findByIdAndDelete(id);
-    if (!deleted) {
-      return NextResponse.json({ message: "Hackathon not found" }, { status: 404 });
+    await db();
+
+    if (!mongoose.isValidObjectId(params.id)) {
+      return NextResponse.json({ success: false, message: "Invalid Hackathon ID", error: "Invalid Hackathon ID" }, { status: 400 });
     }
 
-    return NextResponse.json({ message: "Hackathon deleted successfully" }, { status: 200 });
-  } catch (error) {
-    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+    const deletedHackathon = await Hackathon.findByIdAndDelete(params.id);
+
+    if (!deletedHackathon) {
+      return NextResponse.json({ success: false, message: "Hackathon not found", error: "Hackathon not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, message: "Hackathon deleted successfully" }, { status: 200 });
+  } catch (error: any) {
+    console.error("Error deleting hackathon:", {
+      message: error.message,
+      stack: error.stack,
+    });
+    return NextResponse.json({ success: false, message: "Failed to delete hackathon", error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }

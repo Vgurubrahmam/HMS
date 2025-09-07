@@ -1,6 +1,7 @@
 "use client"
+import { jwtDecode } from "jwt-decode"
 
-import { useState } from "react"
+import { useState,useEffect } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -27,9 +28,8 @@ import { useHackathons } from "@/hooks/use-hackathons"
 import { useRegistrations } from "@/hooks/use-registrations"
 
 export default function StudentHackathonsPage() {
-  // Mock current user ID - in real app, get from auth context
-  const currentUserId = "60f1b2b3c4d5e6f7a8b9c0d3" // John Smith's ID from seed data
-
+  const [currentUserId,setCurrentUserId]=useState("")
+  const [userprofile,setUserProfile]=useState([])
   const [selectedHackathon, setSelectedHackathon] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -37,7 +37,21 @@ export default function StudentHackathonsPage() {
   const [favorites, setFavorites] = useState<string[]>([])
 
   const { toast } = useToast()
+useEffect(()=>{
+  const Token=localStorage.getItem("token")
+  if (Token){
+    try{
+        const decode:any=jwtDecode(Token)
+        
+        console.log(decode,"decode");
+        setCurrentUserId(decode.id)
+        setUserProfile(decode)
+    }catch(error){
 
+    }
+    
+  }
+},[])
   const {
     hackathons,
     loading: hackathonsLoading,

@@ -1,14 +1,14 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Code2 } from "lucide-react"
+import { Code2, Component } from "lucide-react"
 import { Code, Users, Trophy, Calendar, ArrowRight, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { Navbar } from "@/components/navbar"
 import { Github, Linkedin, Mail, ArrowUp } from "lucide-react"
+import { AppProps } from "next/app"
+import { SessionProvider } from "next-auth/react"
 
-
-
-export default function HomePage() {
+export default function HomePage({Component,pageProps}:AppProps) {
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
@@ -16,15 +16,19 @@ export default function HomePage() {
     })
   }
 
+    // <SessionProvider session={pageProps.session}>
+    //   <Component {...pageProps}/>
+
+    // </SessionProvider>
   return (
-    <div className="min-h-screen bg-gradient-to-br  bg-black dark:bg-white">
+    <div className="h-screen w-screen overflow-auto ">
       <Navbar />
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20">
         <div className="text-center max-w-4xl mx-auto mt-16">
 
-          <h1 className="text-5xl font-bold tracking-tight mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-5xl font-bold tracking-tight mb-6 ">
             Streamline Your Hackathon Experience
           </h1>
           <p className="text-xl text-muted-foreground mb-8 leading-relaxed">

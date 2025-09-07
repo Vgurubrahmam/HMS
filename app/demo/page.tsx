@@ -813,10 +813,10 @@ export default function DemoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br  bg-black dark:bg-white">
-      <Navbar />
+    <div className="h-screen w-screen overflow-auto">
+      {/* <Navbar /> */}
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4">
         {/* Header */}
         <div className="flex items-center justify-between my-8">
           <div className="flex items-center gap-4">
@@ -827,7 +827,7 @@ export default function DemoPage() {
               </Link>
             </Button> */}
             <div className="flex flex-col gap-4">
-              <h1 className="text-3xl font-bold text-white dark:text-black">Interactive Demo</h1>
+              <h1 className="text-3xl font-bold ">Interactive Demo</h1>
               <p className="text-muted-foreground">
                 Explore the Hackathon Management System from different perspectives
               </p>

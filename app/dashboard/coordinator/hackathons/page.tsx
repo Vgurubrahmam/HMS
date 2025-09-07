@@ -16,6 +16,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { Calendar, Users, Plus, Edit, Trash2, Eye, MapPin, DollarSign } from "lucide-react"
@@ -437,12 +439,12 @@ export default function CoordinatorHackathonsPage() {
         prev.map((h: any) =>
           String(h._id) === String(id)
             ? {
-                ...h,
-                ...formattedData,
-                startDate: new Date(formattedData.startDate).toISOString().split('T')[0],
-                endDate: new Date(formattedData.endDate).toISOString().split('T')[0],
-                registrationDeadline: new Date(formattedData.registrationDeadline).toISOString().split('T')[0],
-              }
+              ...h,
+              ...formattedData,
+              startDate: new Date(formattedData.startDate).toISOString().split('T')[0],
+              endDate: new Date(formattedData.endDate).toISOString().split('T')[0],
+              registrationDeadline: new Date(formattedData.registrationDeadline).toISOString().split('T')[0],
+            }
             : h
         )
       );
@@ -605,7 +607,7 @@ export default function CoordinatorHackathonsPage() {
                   </div>
 
                   {/* Registration Fee and Max Participants */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="registrationFee">Registration Fee ($) <span className="text-red-500">*</span></Label>
                       <Input
@@ -630,47 +632,26 @@ export default function CoordinatorHackathonsPage() {
                         min="1"
                       />
                     </div>
-                  </div>
-
-                  {/* Categories and Prizes */}
-                  <div className="grid grid-cols-2 gap-4">
+                    {/* Status */}
                     <div className="space-y-2">
-                      <Label htmlFor="categories">Categories (comma-separated) <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="categories"
-                        value={newHackathon.categories}
-                        onChange={(e) => setNewHackathon({ ...newHackathon, categories: e.target.value })}
-                        placeholder="AI/ML, Web Development, Mobile Apps"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="prizes">Prizes (comma-separated) <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="prizes"
-                        value={newHackathon.prizes}
-                        onChange={(e) => setNewHackathon({ ...newHackathon, prizes: e.target.value })}
-                        placeholder="$5000, $3000, $1000"
-                        required
-                      />
+                      <Label htmlFor="status">Status</Label>
+                      <select
+                        id="status"
+                        value={newHackathon.status || "Planning"}
+                        onChange={(e) => setNewHackathon({ ...newHackathon, status: e.target.value })}
+                        className="w-full p-2 border rounded-md"
+                      >
+                        <option value="Planning">Planning</option>
+                        <option value="Registration Open">Registration Open</option>
+                        <option value="Active">Active</option>
+                        <option value="Completed">Completed</option>
+                      </select>
                     </div>
                   </div>
 
-                  {/* Status */}
-                  {/* <div className="space-y-2">
-        <Label htmlFor="status">Status</Label>
-        <select
-          id="status"
-          value={newHackathon.status || "Planning"}
-          onChange={(e) => setNewHackathon({ ...newHackathon, status: e.target.value })}
-          className="w-full p-2 border rounded-md"
-        >
-          <option value="Planning">Planning</option>
-          <option value="Registration Open">Registration Open</option>
-          <option value="Active">Active</option>
-          <option value="Completed">Completed</option>
-        </select>
-      </div> */}
+
+
+
 
                   {/* Additional Fields with Defaults */}
                   <div className="grid grid-cols-3 gap-4">
@@ -711,6 +692,29 @@ export default function CoordinatorHackathonsPage() {
                         onChange={(e) => setNewHackathon({ ...newHackathon, teamsFormed: e.target.value })}
                         placeholder="0"
                         min="0"
+                      />
+                    </div>
+                  </div>
+                  {/* Categories and Prizes */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="categories">Categories (comma-separated) <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="categories"
+                        value={newHackathon.categories}
+                        onChange={(e) => setNewHackathon({ ...newHackathon, categories: e.target.value })}
+                        placeholder="AI/ML, Web Development, Mobile Apps"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="prizes">Prizes (comma-separated) <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="prizes"
+                        value={newHackathon.prizes}
+                        onChange={(e) => setNewHackathon({ ...newHackathon, prizes: e.target.value })}
+                        placeholder="$5000, $3000, $1000"
+                        required
                       />
                     </div>
                   </div>
@@ -832,7 +836,7 @@ export default function CoordinatorHackathonsPage() {
                                   />
                                 </div>
                               </div>
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                   <Label htmlFor="edit-registrationFee">Registration Fee ($) <span className="text-red-500">*</span></Label>
                                   <Input
@@ -856,6 +860,21 @@ export default function CoordinatorHackathonsPage() {
                                     required
                                     min="1"
                                   />
+                                </div>
+                                {/* Status */}
+                                <div className="space-y-2">
+                                  <Label htmlFor="status">Status</Label>
+                                  <select
+                                    id="status"
+                                    value={editHackathon.status}
+                                    onChange={(e) => setEditHackathon({ ...editHackathon, status: e.target.value })}
+                                    className="w-full p-2 border rounded-md"
+                                  >
+                                    <option value="Planning">Planning</option>
+                                    <option value="Registration Open">Registration Open</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Completed">Completed</option>
+                                  </select>
                                 </div>
                               </div>
                               <div className="grid grid-cols-2 gap-4">
@@ -991,7 +1010,7 @@ export default function CoordinatorHackathonsPage() {
                   </div>
 
                   <div className="grid grid-cols-3 gap-4 text-center">
-                     <div className="p-3 bg-purple-50 rounded-lg">
+                    <div className="p-3 bg-purple-50 rounded-lg">
                       <p className="text-2xl font-bold text-purple-600">{hackathon.currentParticipants}</p>
                       <p className="text-xs text-gray-600">Current participants</p>
                     </div>
@@ -999,12 +1018,12 @@ export default function CoordinatorHackathonsPage() {
                       <p className="text-2xl font-bold text-green-600">{hackathon.mentorAssigned}</p>
                       <p className="text-xs text-gray-600">Mentors Assigned</p>
                     </div>
-                   
+
                     <div className="p-3 bg-blue-50 rounded-lg">
                       <p className="text-2xl font-bold text-blue-600">{hackathon.teamsFormed}</p>
                       <p className="text-xs text-gray-600">Teams Formed</p>
                     </div>
-                    
+
                   </div>
                 </div>
               </CardContent>

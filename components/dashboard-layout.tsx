@@ -34,6 +34,8 @@ import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { ModeToggle } from "./mode-toggle"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import ProfileForm from "@/components/ProfileForm";
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -81,8 +83,20 @@ export function DashboardLayout({
 }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userName, setUserName] = useState(initialUserName || "User");
+  const [userData,setUserdata]=useState({
+    username: "",
+  id: "",
+  email: "",
+  phone: "",
+  branch: "",
+  year: "",
+  gender: "",
+  github: "",
+  profile: "",
+  })
   const [userRole, setUserRole] = useState<"coordinator" | "faculty" | "student" | "mentor">(initialUserRole);
   const [userImage, setUserImage] = useState("");
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const router = useRouter()
   const pathname = usePathname()
 
@@ -93,6 +107,7 @@ useEffect(() => {
         const decoded: any = jwtDecode(token)
         if (decoded) {
           setUserName(decoded.username || "User")
+          setUserdata(decoded)
           // Map "Coordinator" to "coordinator" for compatibility
           const mappedRole =
             decoded.role === "Coordinator"
@@ -124,7 +139,7 @@ useEffect(() => {
 
   
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen">
       {/* Sidebar */}
       <div
         className={cn(
@@ -135,10 +150,10 @@ useEffect(() => {
         <div className="flex flex-col justify-between h-full">
 
         <div>
-        <div className="flex items-center justify-center h-16 border-b">
+        <div className="flex items-center justify-center h-16">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">
             <Code2 className="h-6 w-6 text-blue-600 " />
-            <p className="text-black">HackathonMS</p>
+            <p className="text-black">HackOps</p>
           </Link>
         </div>
 
@@ -193,7 +208,7 @@ useEffect(() => {
     <DropdownMenuContent align="end" className="w-56">
       <DropdownMenuLabel>My Account</DropdownMenuLabel>
       <DropdownMenuSeparator />
-      <DropdownMenuItem>
+      <DropdownMenuItem onClick={() => setIsProfileModalOpen(true)}>
         <User className="mr-2 h-4 w-4" />
         Profile
       </DropdownMenuItem>
@@ -224,7 +239,7 @@ useEffect(() => {
           <div className="flex justify-end items-center gap-4 w-full">
             
             
-            <ModeToggle/>
+            <ModeToggle />
           </div>
         </header>
 
@@ -236,6 +251,16 @@ useEffect(() => {
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
+
+      {/* Profile Modal */}
+      <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+          </DialogHeader>
+          <ProfileForm userProfile={userData} />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

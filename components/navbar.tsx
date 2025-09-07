@@ -38,22 +38,24 @@ export function Navbar() {
         )}
       >
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-          <Code2 className="h-6 w-6 text-blue-600" />
-          <p className="text-white dark:text-black">
-          HackathonMS
+        <Link href="/" className="flex items-center gap-2 font-bold text-2xl text-foreground">
+          {/* <Code2 className="h-6 w-6 " /> */}
+          <p className="text-primary">
+
+
+          HackOps
 
           </p>
         </Link>
 
         {/* Desktop menu */}
-        <div className="hidden md:flex items-center gap-4">
-          <Button className="bg-none">
-                <Link href="/auth/login">Login</Link>
-              </Button>
-              <Button className="">
-                <Link href="/auth/register">Sign Up</Link>
-              </Button>
+        <div className="hidden md:flex items-center gap-6">
+          {/* <Button className="bg-none"> */}
+                <Link href="/auth/login" className="font-semibold text-primary">Sign in</Link>
+              {/* </Button> */}
+              {/* <Button className=""> */}
+                <Link href="/auth/register" className="font-semibold text-primary">Sign Up</Link>
+              {/* </Button> */}
           <ModeToggle />
         </div>
 

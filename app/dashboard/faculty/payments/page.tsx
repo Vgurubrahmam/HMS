@@ -60,7 +60,7 @@ export default function FacultyPaymentsPage() {
   const fetchPayments = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/registrations')
+      const response = await fetch('/api/hackathon-registration')
       const result = await response.json()
 
       if (result.success) {

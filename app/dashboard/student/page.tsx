@@ -88,8 +88,8 @@ export default function StudentDashboard() {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Student Dashboard</h1>
-            <p className="text-gray-600">Track your hackathon journey and achievements</p>
+            <h1 className="text-4xl font-semibold ">Student Dashboard</h1>
+            <p className="text-gray-500">Track your hackathon journey and achievements</p>
           </div>
           <div className="flex gap-2">
             <Link href="/dashboard/student/hackathons">
