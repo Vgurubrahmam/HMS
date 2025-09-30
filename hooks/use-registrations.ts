@@ -67,11 +67,11 @@ export function useRegistrations(params?: UseRegistrationsParams): UseRegistrati
   try {
     setLoading(true);
     // console.log("Fetching registrations with params:", params);
-    const response: ApiResponse<{ registrations: Registration[] }> = await api.getRegistrations(params); // Line 26
+    const response = await api.getRegistrations(params); // Line 26
 
     if (response.success) {
       // console.log("Fetch registrations response:", response);
-      setRegistrations(response.data?.registrations || []);
+      setRegistrations(Array.isArray(response.data) ? response.data : []);
       if (response.pagination) {
         setPagination(response.pagination);
         // console.log("Pagination updated:", response.pagination);

@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 interface ProfileFormProps {
-  userProfile: {
+  userProfile?: {
     username: string;
     id: string;
     email: string;
@@ -33,6 +33,25 @@ function ProfileForm({ userProfile }: ProfileFormProps) {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+const getProfile=async()=>{
+  try{
+    const response=await fetch(`/api/profile/${formData.id}`,{
+      method:"GET",
+
+    })
+    const data=await response.json()
+    console.log(response);
+    
+    setFormData((prev)=>({...prev,...data}))
+
+  }catch(error){
+console.error("error fetching profile",error);
+
+  }
+}
+useEffect(()=>{
+getProfile()
+},[])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -55,66 +74,16 @@ function ProfileForm({ userProfile }: ProfileFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <Input
-        name="username"
-        value={formData.username}
-        onChange={handleChange}
-        placeholder="Username"
-        required
-      />
-      <Input
-        name="id"
-        value={formData.id}
-        onChange={handleChange}
-        placeholder="ID"
-        required
-        disabled
-      />
-      <Input
-        name="email"
-        value={formData.email}
-        onChange={handleChange}
-        placeholder="Email"
-        required
-      />
-    <Input
-    name="image"
-    value={formData.image}
-    onChange={handleChange}
-    placeholder="Profile"
-
-    />
-      <Input
-        name="phone"
-        value={formData.phone}
-        onChange={handleChange}
-        placeholder="Phone Number"
-      />
-      <Input
-        name="branch"
-        value={formData.branch}
-        onChange={handleChange}
-        placeholder="Branch"
-      />
-      <Input
-        name="year"
-        value={formData.year}
-        onChange={handleChange}
-        placeholder="Year"
-      />
-      <Input
-        name="gender"
-        value={formData.gender}
-        onChange={handleChange}
-        placeholder="Gender"
-      />
-      <Input
-        name="github"
-        value={formData.github}
-        onChange={handleChange}
-        placeholder="GitHub Link"
-      />
+     <form onSubmit={handleSubmit} className="space-y-4">
+      <Input name="username" value={formData.username} onChange={handleChange} placeholder="Username" required />
+      <Input name="id" value={formData.id} onChange={handleChange} placeholder="ID" required disabled />
+      <Input name="email" value={formData.email} onChange={handleChange} placeholder="Email" required />
+      <Input name="image" value={formData.image} onChange={handleChange} placeholder="Profile" />
+      <Input name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone Number" />
+      <Input name="branch" value={formData.branch} onChange={handleChange} placeholder="Branch" />
+      <Input name="year" value={formData.year} onChange={handleChange} placeholder="Year" />
+      <Input name="gender" value={formData.gender} onChange={handleChange} placeholder="Gender" />
+      <Input name="github" value={formData.github} onChange={handleChange} placeholder="GitHub Link" />
       <Button type="submit">Save</Button>
     </form>
   );

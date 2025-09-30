@@ -46,7 +46,7 @@ class ApiClient {
       if (!response.ok) {
         return {
           success: false,
-          error: data.message || `HTTP error ${response.status}`,
+          error: data.message,
         };
       }
       return data;

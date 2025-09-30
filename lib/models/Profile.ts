@@ -21,7 +21,7 @@ const ProfileSchema: Schema = new Schema({
   year: { type: String },
   gender: { type: String },
   github: { type: String },
-  profile:{type:String}
+  image:{type:String}
 });
 
 const Profile = mongoose.models.Profile || mongoose.model<IProfile>('Profile', ProfileSchema);

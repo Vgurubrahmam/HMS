@@ -16,69 +16,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { Calendar, Users, Plus, Edit, Trash2, Eye, MapPin, DollarSign } from "lucide-react"
+import { Calendar, Users, Plus, Edit, Trash2, Eye, MapPin, DollarSign, IndianRupee } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function CoordinatorHackathonsPage() {
-  const [hackathons, setHackathons] = useState([
-    {
-      id: 1,
-      title: "AI Innovation Challenge 2024",
-      description: "Build innovative AI solutions for real-world problems",
-      status: "Active",
-      startDate: "2024-01-15",
-      endDate: "2024-01-17",
-      registrationDeadline: "2024-01-17",
-      registrationFee: 50,
-      maxParticipants: 200,
-      currentParticipants: 156,
-      venue: "Tech Hub Building A",
-      prizes: ["$5000", "$3000", "$1000"],
-      categories: ["AI/ML", "Computer Vision", "NLP"],
-      mentorAssigned: 12,
-      teamsFormed: 39,
-    },
-    {
-      id: 2,
-      title: "Web3 Developer Summit",
-      description: "Explore the future of decentralized applications",
-      status: "Registration Open",
-      startDate: "2024-01-22",
-      endDate: "2024-01-24",
-      registrationDeadline: "2024-01-17",
-
-      registrationFee: 75,
-      maxParticipants: 150,
-      currentParticipants: 89,
-      venue: "Innovation Center",
-      prizes: ["$8000", "$5000", "$2000"],
-      categories: ["Blockchain", "DeFi", "NFTs"],
-      mentorAssigned: 8,
-      teamsFormed: 22,
-    },
-    {
-      id: 3,
-      title: "Mobile App Hackathon",
-      description: "Create the next generation of mobile applications",
-      status: "Planning",
-      startDate: "2024-02-01",
-      endDate: "2024-02-03",
-      registrationDeadline: "2024-01-17",
-
-      registrationFee: 60,
-      maxParticipants: 180,
-      currentParticipants: 0,
-      venue: "Campus Main Hall",
-      prizes: ["$6000", "$4000", "$1500"],
-      categories: ["iOS", "Android", "Cross-platform"],
-      mentorAssigned: 0,
-      teamsFormed: 0,
-    },
-  ])
+const [hackathons, setHackathons] = useState<Hackathon[]>([])
 
   const [selectedHackathon, setSelectedHackathon] = useState<any>(null)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -359,11 +304,22 @@ export default function CoordinatorHackathonsPage() {
   // put method
   // Debugged handleUpdateHackathon
   const handleUpdateHackathon = async (id: string, updatedData: Partial<NewHackathon>) => {
+    console.log('Updating hackathon with ID:', id); // Debug log
+
     if (!id) {
       toast({
         variant: 'destructive',
         title: 'Error',
         description: 'Hackathon ID is missing.',
+      });
+      return;
+    }
+
+    if (!selectedHackathon || selectedHackathon._id !== id) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Selected hackathon mismatch.',
       });
       return;
     }
@@ -395,6 +351,7 @@ export default function CoordinatorHackathonsPage() {
 
       // Format data for backend
       const formattedData = {
+        _id: id, // Ensure ID is included in the formatted data
         title: updatedData.title,
         description: updatedData.description,
         startDate: updatedData.startDate,
@@ -436,17 +393,25 @@ export default function CoordinatorHackathonsPage() {
 
       // Update state with formatted data
       setHackathons((prev) =>
-        prev.map((h: any) =>
-          String(h._id) === String(id)
-            ? {
-              ...h,
-              ...formattedData,
+        prev.map((h: any) => {
+          // Get the hackathon ID, handling both MongoDB _id and regular id
+          const hackathonId = h._id || h.id;
+          
+          // Only update if IDs match
+          if (String(hackathonId) === String(id)) {
+            console.log('Updating hackathon:', id); // Debug log
+            return {
+              ...h, // Keep existing properties
+              ...formattedData, // Update with new data
+              _id: hackathonId, // Preserve the ID
+              id: hackathonId, // Preserve the ID
               startDate: new Date(formattedData.startDate).toISOString().split('T')[0],
               endDate: new Date(formattedData.endDate).toISOString().split('T')[0],
               registrationDeadline: new Date(formattedData.registrationDeadline).toISOString().split('T')[0],
-            }
-            : h
-        )
+            };
+          }
+          return h; // Return unchanged for non-matching IDs
+        })
       );
 
       setIsEditDialogOpen(false);
@@ -492,6 +457,9 @@ export default function CoordinatorHackathonsPage() {
       return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
     };
 
+    // Set the selected hackathon first
+    setSelectedHackathon(hackathon);
+
     setEditHackathon({
       title: hackathon.title || "",
       description: hackathon.description || "",
@@ -509,7 +477,6 @@ export default function CoordinatorHackathonsPage() {
       status: hackathon.status || "Planning",
     });
 
-    // setSelectedHackathon(hackathon); // Ensure selected hackathon is set
     setIsEditDialogOpen(true);
   };
   return (
@@ -753,7 +720,12 @@ export default function CoordinatorHackathonsPage() {
                       <Button variant="ghost" size="sm" onClick={() => setSelectedHackathon(hackathon)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                      <Dialog key={hackathon._id} open={isEditDialogOpen && selectedHackathon?._id === hackathon._id} onOpenChange={(open) => {
+                          if (!open) {
+                            setIsEditDialogOpen(false);
+                            setSelectedHackathon(null);
+                          }
+                        }}>
                         <DialogTrigger asChild>
                           <button className="" onClick={() => handleEditClick(hackathon)}>
                             <Edit className="mr-2 h-4 w-4" />
@@ -767,7 +739,9 @@ export default function CoordinatorHackathonsPage() {
                           <form
                             onSubmit={(e) => {
                               e.preventDefault();
-                              handleUpdateHackathon(hackathon._id, editHackathon);
+                              if (selectedHackathon?._id) {
+                                handleUpdateHackathon(selectedHackathon._id, editHackathon);
+                              }
                             }}
                           >
                             <div className="grid gap-4 py-4">
@@ -981,7 +955,7 @@ export default function CoordinatorHackathonsPage() {
                     {hackathon.venue}
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <DollarSign className="h-4 w-4" />${hackathon.registrationFee} registration
+                    <IndianRupee className="h-4 w-4" />{hackathon.registrationFee} registration
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Users className="h-4 w-4" />
@@ -1075,7 +1049,10 @@ export default function CoordinatorHackathonsPage() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Registration Fee:</span>
-                          <span>${selectedHackathon.registrationFee}</span>
+                          <div className="flex justify-content-center items-center">
+                            <IndianRupee className="h-4 w-4 "/>
+                            {selectedHackathon.registrationFee}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -1104,7 +1081,7 @@ export default function CoordinatorHackathonsPage() {
                       <CardTitle>Registered Participants</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-gray-600">Participant management interface would go here...</p>
+                      <p className="text-gray-600">Participant management interface would go here... and which registered there names will get here </p>
                     </CardContent>
                   </Card>
                 </TabsContent>
@@ -1114,7 +1091,7 @@ export default function CoordinatorHackathonsPage() {
                       <CardTitle>Team Management</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-gray-600">Team formation and management interface would go here...</p>
+                      <p className="text-gray-600">Team formation and management interface would go here...  and which teams are formed dynamically there data get here</p>
                     </CardContent>
                   </Card>
                 </TabsContent>
@@ -1124,7 +1101,7 @@ export default function CoordinatorHackathonsPage() {
                       <CardTitle>Mentor Assignment</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-gray-600">Mentor assignment interface would go here...</p>
+                      <p className="text-gray-600">Mentor assignment interface would go here... which mentor is active for upcoming hacthons</p>
                     </CardContent>
                   </Card>
                 </TabsContent>

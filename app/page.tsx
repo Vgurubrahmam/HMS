@@ -166,7 +166,7 @@ export default function HomePage({Component,pageProps}:AppProps) {
             <div className="mb-6 md:mb-0">
               <Link href="/" className="flex items-center gap-2 font-bold text-xl">
                 <Code2 className="h-6 w-6 text-blue-600" />
-                <p className="text-black dark:text-white">
+                <p className="text-black dark:text-white w-fit">
                   HackathonMS
 
                 </p>

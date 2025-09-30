@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, Users, Trophy, TrendingUp, Plus, Eye, BarChart3, PieChart, Activity, Loader2 } from "lucide-react"
+import { Calendar, Users, Trophy, TrendingUp, Plus, Eye, BarChart3, PieChart, Activity, Loader2, IndianRupee } from "lucide-react"
 import { useHackathons } from "@/hooks/use-hackathons"
 import { useTeams } from "@/hooks/use-teams"
 import { useUsers } from "@/hooks/use-users"
@@ -101,7 +101,7 @@ const [loading,setLoading]=useState(false)
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Coordinator Dashboard</h1>
+            <h1 className="text-3xl font-bold ">Coordinator Dashboard</h1>
             <p className="text-gray-600">Manage hackathons, teams, and participants</p>
           </div>
           <div className="flex gap-2">
@@ -159,8 +159,8 @@ const [loading,setLoading]=useState(false)
               <TrendingUp className="h-4 w-4 text-purple-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                $
+              <div className="text-2xl font-bold flex justify-content-center items-center">
+                <IndianRupee className="h-4 w-4"/>
                 {registrations.reduce(
                   (sum: number, r: any) => sum + (r.paymentStatus === "Paid" ? r.paymentAmount : 0),
                   0,
