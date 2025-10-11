@@ -450,6 +450,7 @@ export default function CoordinatorHackathonsPage() {
       );
 
       setIsEditDialogOpen(false);
+      setEditingHackathonId(null);
       toast({
         title: 'Hackathon Updated',
         description: data.message || 'Hackathon has been successfully updated.',
@@ -484,6 +485,9 @@ export default function CoordinatorHackathonsPage() {
     status: 'Planning',
   });
 
+  // State to track which hackathon is being edited
+  const [editingHackathonId, setEditingHackathonId] = useState<string | null>(null);
+
   // Initialize edit form with selected hackathon data
   const handleEditClick = (hackathon: Hackathon) => {
     const formatDate = (date: string | Date) => {
@@ -491,6 +495,10 @@ export default function CoordinatorHackathonsPage() {
       const d = new Date(date);
       return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
     };
+
+    // Set the hackathon ID being edited
+    const hackathonId = (hackathon as any)._id || hackathon.id;
+    setEditingHackathonId(String(hackathonId));
 
     setEditHackathon({
       title: hackathon.title || "",
@@ -509,7 +517,6 @@ export default function CoordinatorHackathonsPage() {
       status: hackathon.status || "Planning",
     });
 
-    // setSelectedHackathon(hackathon); // Ensure selected hackathon is set
     setIsEditDialogOpen(true);
   };
   return (
@@ -753,7 +760,12 @@ export default function CoordinatorHackathonsPage() {
                       <Button variant="ghost" size="sm" onClick={() => setSelectedHackathon(hackathon)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+                        setIsEditDialogOpen(open);
+                        if (!open) {
+                          setEditingHackathonId(null);
+                        }
+                      }}>
                         <DialogTrigger asChild>
                           <button className="" onClick={() => handleEditClick(hackathon)}>
                             <Edit className="mr-2 h-4 w-4" />
@@ -767,7 +779,9 @@ export default function CoordinatorHackathonsPage() {
                           <form
                             onSubmit={(e) => {
                               e.preventDefault();
-                              handleUpdateHackathon(hackathon._id, editHackathon);
+                              if (editingHackathonId) {
+                                handleUpdateHackathon(editingHackathonId, editHackathon);
+                              }
                             }}
                           >
                             <div className="grid gap-4 py-4">

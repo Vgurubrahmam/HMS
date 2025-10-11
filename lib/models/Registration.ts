@@ -3,12 +3,12 @@ import mongoose from "mongoose";
 const RegistrationSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+    ref: "users",
     required: true,
   },
   hackathon: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Hackathon",
+    ref: "hackathons",
     required: true,
   },
   paymentStatus: {

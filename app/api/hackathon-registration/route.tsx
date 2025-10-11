@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import db from "@/lib/db"
 import Registration from '@/lib/models/Registration';
+import User from '@/lib/models/User';
+import Hackathon from '@/lib/models/Hackathon';
 
 
 
@@ -97,7 +99,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     const response = {
       success: true,
-      data: { registrations },
+      data: registrations,
       pagination: {
         page,
         limit,
