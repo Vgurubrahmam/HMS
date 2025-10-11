@@ -261,7 +261,7 @@ export default function FacultyStudentsPage() {
         </Card>
 
         {/* Students List */}
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-hidden">
+        <div className="grid gap-4">
           {filteredStudents.map((student) => (
             <Card key={student.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">
@@ -284,7 +284,7 @@ export default function FacultyStudentsPage() {
                       <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
                         <span>{student.year}</span>
                         <span>•</span>
-                        <span className="truncate whitespace-nowrap overflow-hidden">{student.email}</span>
+                        <span>{student.email}</span>
                       </div>
                     </div>
                   </div>

@@ -44,28 +44,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<JsonResponse>
 
     console.log("Hackathon registration data to be saved:", registrationData)
 
-    // Validate references
-    const userExists = await Registration.db.collection("users").findOne({ _id: user });
-    const hackathonExists = await Registration.db.collection("hackathons").findOne({ _id: hackathon });
-
-    // Log the user ID being checked
-    console.log("Checking user ID:", user);
-
-    // Log the result of the user query
-    console.log("User query result:", userExists);
-
-    if (!userExists) {
-      console.error("User not found:", user);
-      return NextResponse.json({ message: "User not found" }, { status: 404 });
-    }
-
-    if (!hackathonExists) {
-      console.error("Hackathon not found:", hackathon);
-      return NextResponse.json({ message: "Hackathon not found" }, { status: 404 });
-    }
-
-    console.log("References validated successfully");
-
     // Save registration
     const newRegistration = new Registration(registrationData)
     await newRegistration.save()

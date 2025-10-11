@@ -1,13 +1,25 @@
-import mongoose, { Schema, model, models } from "mongoose";
+import mongoose from "mongoose";
 
-const RegistrationSchema = new Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  hackathon: { type: mongoose.Schema.Types.ObjectId, ref: "Hackathon", required: true },
-  paymentStatus: { type: String, default: "Pending" },
+const RegistrationSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  hackathon: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Hackathon",
+    required: true,
+  },
+  paymentStatus: {
+    type: String,
+    enum: ["Pending", "Completed", "Failed", "Refunded"],
+    default: "Pending",
+  },
+  registrationDate: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
-const Registration = models.Registration || model("Registration", RegistrationSchema);
-
-
-
-export default Registration;
+export default mongoose.models.Registration || mongoose.model("Registration", RegistrationSchema);

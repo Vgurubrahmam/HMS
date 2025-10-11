@@ -49,36 +49,6 @@ export default function FacultyHackathonsPage() {
 
   const { toast } = useToast()
 
-  const fetchHackathons = async () => {
-    try {
-      const res = await fetch("/api/hackathons", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
-      })
-      const data = await res.json()
-
-      if (res.ok) {
-        setHackathons(data.data)
-        calculateStats(data.data)
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: data.message || "Error fetching hackathons"
-        })
-      }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Something went wrong while fetching hackathons"
-
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
     fetchHackathons()
   }, [])
@@ -86,6 +56,45 @@ export default function FacultyHackathonsPage() {
   useEffect(() => {
     filterHackathons()
   }, [hackathons, searchTerm, statusFilter, difficultyFilter])
+
+// get methods
+ 
+    const fetchHackathons = async () => {
+      try {
+        const res = await fetch("/api/hackathons", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        })
+        const data = await res.json()
+
+        if (res.ok) {
+          setHackathons(data.data)
+          // toast({
+          //   title: "Success",
+          //   description: "Hackathons fetched successfully",
+          // })
+          calculateStats(data.data)
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: data.message || "Error feteching hackthons"
+          })
+        }
+
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message || "Something went wrong while fetching hackathons"
+
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchHackathons()
+  }, [])
 
   const calculateStats = (hackathonData: HackathonData[]) => {
     const totalHackathons = hackathonData.length
@@ -107,7 +116,7 @@ export default function FacultyHackathonsPage() {
     let filtered = hackathons
 
     if (searchTerm) {
-      filtered = filtered.filter((hackathon: HackathonData) =>
+      filtered = filtered.filter(hackathon =>
         hackathon.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         hackathon.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         hackathon.venue.toLowerCase().includes(searchTerm.toLowerCase())
@@ -115,11 +124,11 @@ export default function FacultyHackathonsPage() {
     }
 
     if (statusFilter !== "all") {
-      filtered = filtered.filter((hackathon: HackathonData) => hackathon.status === statusFilter)
+      filtered = filtered.filter(hackathon => hackathon.status === statusFilter)
     }
 
     if (difficultyFilter !== "all") {
-      filtered = filtered.filter((hackathon: HackathonData) => hackathon.difficulty === difficultyFilter)
+      filtered = filtered.filter(hackathon => hackathon.difficulty === difficultyFilter)
     }
 
     setFilteredHackathons(filtered)
@@ -353,8 +362,8 @@ export default function FacultyHackathonsPage() {
                           <p className="text-2xl font-bold text-purple-600">{hackathon.prizes?.length || 0}</p>
                           <p className="text-xs text-gray-600">Prizes</p>
                         </div>
-                        <div className="p-3 bg-orange-50 text-center rounded-lg">
-                          <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl  font-bold text-orange-600">${hackathon.registrationFee * hackathon.currentParticipants}</p>
+                        <div className="p-3 bg-orange-50 rounded-lg">
+                          <p className="text-2xl font-bold text-orange-600">${hackathon.registrationFee * hackathon.currentParticipants}</p>
                           <p className="text-xs text-gray-600">Revenue</p>
                         </div>
                       </div>

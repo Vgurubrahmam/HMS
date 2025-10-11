@@ -1,7 +1,6 @@
 "use client"
-import { jwtDecode } from "jwt-decode"
 
-import { useState,useEffect } from "react"
+import { useState ,useEffect} from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -28,30 +27,18 @@ import { useHackathons } from "@/hooks/use-hackathons"
 import { useRegistrations } from "@/hooks/use-registrations"
 
 export default function StudentHackathonsPage() {
-  const [currentUserId,setCurrentUserId]=useState("")
-  const [userprofile,setUserProfile]=useState([])
+  // Mock current user ID - in real app, get from auth context
+  const currentUserId = "60f1b2b3c4d5e6f7a8b9c0d3" // John Smith's ID from seed data
+
   const [selectedHackathon, setSelectedHackathon] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [difficultyFilter, setDifficultyFilter] = useState("all")
   const [favorites, setFavorites] = useState<string[]>([])
-
+  const [Hackathons, setHackathons] = useState([])
+  const [loading, setLoading] = useState(false)
   const { toast } = useToast()
-useEffect(()=>{
-  const Token=localStorage.getItem("token")
-  if (Token){
-    try{
-        const decode:any=jwtDecode(Token)
-        
-        console.log(decode,"decode");
-        setCurrentUserId(decode.id)
-        setUserProfile(decode)
-    }catch(error){
 
-    }
-    
-  }
-},[])
   const {
     hackathons,
     loading: hackathonsLoading,
@@ -62,6 +49,45 @@ useEffect(()=>{
     difficulty: difficultyFilter !== "all" ? difficultyFilter : undefined,
   })
 
+// get all hackathons
+ useEffect(() => {
+    const fetchHackathons = async () => {
+      try {
+        const res = await fetch("/api/hackathons", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        })
+        const data = await res.json()
+
+        if (res.ok) {
+          setHackathons(data.data)
+          // toast({
+          //   title: "Success",
+          //   description: "Hackathons fetched successfully",
+          // })
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: data.message || "Error fetching hackathons"
+          })
+        }
+
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message || "Something went wrong while fetching hackathons"
+
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchHackathons()
+  }, [])
+
+
   const {
     registrations,
     loading: registrationsLoading,
@@ -70,7 +96,7 @@ useEffect(()=>{
     user: currentUserId,
   })
 
-  const loading = hackathonsLoading || registrationsLoading
+  const totalLoading = loading || hackathonsLoading || registrationsLoading
 
   // Get user's registered hackathons
   const myRegistrations = registrations.map((r: any) => ({
@@ -160,10 +186,10 @@ useEffect(()=>{
     }
   }
 
-  const myHackathons = hackathons.filter((h: any) => myHackathonIds.includes(h._id))
+  const myHackathons = Hackathons.filter((h: any) => myHackathonIds.includes(h._id))
   const favoriteHackathons = hackathons.filter((h: any) => favorites.includes(h._id))
 
-  if (loading) {
+  if (totalLoading) {
     return (
       <DashboardLayout userRole="student">
         <div className="flex items-center justify-center h-64">
@@ -187,7 +213,7 @@ useEffect(()=>{
 
         <Tabs defaultValue="browse" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="browse">Browse All ({hackathons.length})</TabsTrigger>
+            <TabsTrigger value="browse">Browse All ({Hackathons.length})</TabsTrigger>
             <TabsTrigger value="registered">My Hackathons ({myHackathons.length})</TabsTrigger>
             <TabsTrigger value="favorites">Favorites ({favoriteHackathons.length})</TabsTrigger>
           </TabsList>
@@ -242,7 +268,7 @@ useEffect(()=>{
 
             {/* Hackathons Grid */}
             <div className="grid gap-6">
-              {hackathons.map((hackathon: any) => {
+              {Hackathons.map((hackathon: any) => {
                 const isRegistered = myHackathonIds.includes(hackathon._id)
                 const isFavorite = favorites.includes(hackathon._id)
                 const isRegistrationOpen = hackathon.status === "Registration Open"
@@ -342,7 +368,7 @@ useEffect(()=>{
               })}
             </div>
 
-            {hackathons.length === 0 && (
+            {Hackathons.length === 0 && (
               <Card>
                 <CardContent className="text-center py-8">
                   <p className="text-gray-600">No hackathons found matching your criteria.</p>

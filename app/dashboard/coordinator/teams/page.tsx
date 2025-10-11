@@ -43,6 +43,7 @@ import { useUsers } from "@/hooks/use-users"
 
 export default function CoordinatorTeamsPage() {
   const [selectedTeam, setSelectedTeam] = useState<any>(null)
+  
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = useState(false)
   const [selectedTeamForMembers, setSelectedTeamForMembers] = useState<any>(null)
@@ -589,7 +590,7 @@ useEffect(()=>{
                           <Button variant="ghost" size="sm" onClick={() => setSelectedTeam(team)}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => handleDeleteTeam(team._id)}>
@@ -868,12 +869,12 @@ useEffect(()=>{
                   <h4 className="font-medium mb-3">Team Members</h4>
                   <div className="grid grid-cols-2 gap-3">
                     {selectedTeam.members?.map((member: any) => (
-                      <div key={member._id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div key={member?._id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={member.avatar || "/placeholder.svg"} />
+                            <AvatarImage src={member?.avatar || "/placeholder.svg"} />
                             <AvatarFallback>
-                              {member.name
+                              {member?.name
                                 ?.split(" ")
                                 .map((n: string) => n[0])
                                 .join("")}
@@ -881,15 +882,15 @@ useEffect(()=>{
                           </Avatar>
                           <div>
                             <div className="flex items-center gap-1">
-                              <p className="font-medium">{member.name}</p>
-                              {member._id === selectedTeam.teamLead?._id && (
+                              <p className="font-medium">{member?.name}</p>
+                              {member?._id === selectedTeam.teamLead?._id && (
                                 <Crown className="h-4 w-4 text-yellow-500" />
                               )}
                             </div>
-                            <p className="text-sm text-gray-600">{member.role}</p>
+                            <p className="text-sm text-gray-600">{member?.role}</p>
                           </div>
                         </div>
-                        <p className="text-sm text-gray-600">{member.email}</p>
+                        <p className="text-sm text-gray-600">{member?.email}</p>
                       </div>
                     ))}
                   </div>

@@ -34,8 +34,8 @@ import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { ModeToggle } from "./mode-toggle"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import ProfileForm from "@/components/ProfileForm";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import ProfileForm from "@/components/ProfileForm"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -83,16 +83,25 @@ export function DashboardLayout({
 }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userName, setUserName] = useState(initialUserName || "User");
-  const [userData,setUserdata]=useState({
+  const [userData, setUserData] = useState({
     username: "",
-  id: "",
-  email: "",
-  phone: "",
-  branch: "",
-  year: "",
-  gender: "",
-  github: "",
-  profile: "",
+    id: "",
+    email: "",
+    role: "",
+    phone: "",
+    branch: "",
+    year: "",
+    gender: "",
+    github: "",
+    image: "",
+    // Faculty specific fields
+    department: "",
+    designation: "",
+    specialization: "",
+    // Mentor specific fields
+    expertise: [] as string[],
+    company: "",
+    experience: "",
   })
   const [userRole, setUserRole] = useState<"coordinator" | "faculty" | "student" | "mentor">(initialUserRole);
   const [userImage, setUserImage] = useState("");
@@ -106,22 +115,36 @@ useEffect(() => {
       try {
         const decoded: any = jwtDecode(token)
         if (decoded) {
-          setUserName(decoded.username || "User")
-          setUserdata(decoded)
+          const username = decoded.username || initialUserName || "User";
+          setUserName(username);
+          setUserData(prev => ({
+            ...prev,
+            username,
+            id: decoded.id || "",
+            email: decoded.email || "",
+          }));
+
           // Map "Coordinator" to "coordinator" for compatibility
           const mappedRole =
             decoded.role === "Coordinator"
               ? "coordinator"
-              : decoded.role;
-          setUserRole(
+              : decoded.role.toLowerCase();
+          
+          const validRole = 
             mappedRole === "coordinator" ||
             mappedRole === "faculty" ||
             mappedRole === "student" ||
             mappedRole === "mentor"
               ? mappedRole
-              : "student"
-          );
-          setUserImage(decoded.image || "/placeholder.svg")
+              : "student";
+
+          setUserRole(validRole);
+          setUserImage(decoded.image || "/placeholder.svg");
+
+          // Fetch profile data
+          if (decoded.id) {
+            fetchProfileData(decoded.id);
+          }
         }
       } catch (err) {
         console.error("Failed to decode token:", err)
@@ -131,13 +154,82 @@ useEffect(() => {
 
   const menuItems = roleMenuItems[userRole]
 
+  const fetchProfileData = async (userId: string) => {
+    // First try to get data from localStorage
+    const storedProfile = localStorage.getItem("userProfile");
+    const googleProfile = localStorage.getItem("googleUserProfile");
+    
+    if (storedProfile) {
+      try {
+        const profileData = JSON.parse(storedProfile);
+        // If we have Google profile data, prefer its image URL
+        let imageUrl = profileData.image;
+        if (googleProfile) {
+          const googleData = JSON.parse(googleProfile);
+          if (googleData.imgUrl) {
+            imageUrl = googleData.imgUrl;
+          }
+        }
+        
+        setUserData(prev => ({
+          ...prev,
+          ...profileData,
+          id: userId,
+          image: imageUrl,
+        }));
+        if (profileData.username) {
+          setUserName(profileData.username);
+        }
+        setUserImage(imageUrl || "/placeholder.svg");
+      } catch (error) {
+        console.error("Error parsing stored profile:", error);
+      }
+    }
+    
+    // Then fetch from API to ensure data is up to date
+    try {
+      const response = await fetch(`/api/profiles/${userId}`);
+      if (response.ok) {
+        const { data } = await response.json();
+        if (data) {
+          // Merge Google profile image if available
+          let imageUrl = data.image;
+          if (googleProfile) {
+            const googleData = JSON.parse(googleProfile);
+            if (googleData.imgUrl) {
+              imageUrl = googleData.imgUrl;
+            }
+          }
+          
+          const updatedProfile = {
+            ...data,
+            id: userId,
+            image: imageUrl,
+          };
+          
+          setUserData(prev => ({
+            ...prev,
+            ...updatedProfile,
+          }));
+          if (data.username) {
+            setUserName(data.username);
+          }
+          setUserImage(imageUrl || "/placeholder.svg");
+          
+          // Update localStorage with latest data
+          localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching profile data:", error);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("token")
     router.push("/auth/login")
-
   }
 
-  
   return (
     <div className="h-screen">
       {/* Sidebar */}
@@ -228,6 +320,52 @@ useEffect(() => {
             </div>
       </div>
 
+      {/* Profile Modal */}
+      <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">
+              {userRole.charAt(0).toUpperCase() + userRole.slice(1)} Profile
+            </DialogTitle>
+          </DialogHeader>
+          <ProfileForm 
+            userProfile={{
+              username: userData.username,
+              userId: userData.id,
+              email: userData.email,
+              role: userRole,
+              phone: userData.phone,
+              gender: userData.gender,
+              image: userData.image,
+              branch: userData.branch,
+              year: userData.year,
+              github: userData.github,
+              department: userData.department,
+              designation: userData.designation,
+              specialization: userData.specialization,
+              expertise: userData.expertise,
+              company: userData.company,
+              experience: userData.experience,
+            }} 
+            onProfileUpdate={(updatedProfile) => {
+              setUserData(prev => ({
+                ...prev,
+                ...updatedProfile,
+              }));
+              setUserImage(updatedProfile.image || "/placeholder.svg");
+              setIsProfileModalOpen(false);
+              
+              // Update localStorage when profile is updated
+              localStorage.setItem("userProfile", JSON.stringify({
+                ...updatedProfile,
+                id: userData.id,
+                role: userRole,
+              }));
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
       {/* Main Content */}
       <div className="lg:ml-64">
         {/* Header */}
@@ -251,16 +389,6 @@ useEffect(() => {
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
-
-      {/* Profile Modal */}
-      <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Profile</DialogTitle>
-          </DialogHeader>
-          <ProfileForm userProfile={userData} />
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

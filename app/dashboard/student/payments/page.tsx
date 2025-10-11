@@ -116,6 +116,9 @@ export default function StudentPaymentsPage() {
     }
   }
 
+  // get method for pending payments already registred
+
+
   return (
     <DashboardLayout userRole="student">
       <div className="space-y-6">

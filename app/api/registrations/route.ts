@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import db from "@/lib/db"
 import User from "@/lib/models/User"
+import Registration from "@/lib/models/Registration"
 import bcryptjs from "bcryptjs"
 
 interface RegisterRequestBody {
@@ -21,12 +22,12 @@ interface JsonResponse {
 
 // POST method for user registration
 export async function POST(req: NextRequest): Promise<NextResponse<JsonResponse>> {
-  // console.log("API /api/registrations POST called")
+  console.log("API /api/registrations POST called",req.url)
 
   try {
     // Connect to database
     await db()
-    // console.log("Database connected successfully")
+    console.log("Database connected successfully")
 
     // Parse request body
     let body: RegisterRequestBody
@@ -110,3 +111,58 @@ export async function POST(req: NextRequest): Promise<NextResponse<JsonResponse>
   }
 }
 
+// GET method for fetching registrations
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  // console.log("API /api/registrations GET called")
+
+  try {
+    await db()
+    // console.log("Database connected successfully")
+
+    const { searchParams } = new URL(req.url)
+    const user = searchParams.get("user")
+    const hackathon = searchParams.get("hackathon")
+    const paymentStatus = searchParams.get("paymentStatus")
+    const page = Number.parseInt(searchParams.get("page") || "1", 10)
+    const limit = Number.parseInt(searchParams.get("limit") || "10", 10)
+
+    // Build query
+    const query: any = {}
+    if (user) query.user = user
+    if (hackathon) query.hackathon = hackathon
+    if (paymentStatus) query.paymentStatus = paymentStatus
+
+    // Execute query with pagination
+    const skip = (page - 1) * limit
+    const [registrations, total] = await Promise.all([
+      Registration.find(query).skip(skip).limit(limit).populate("user", "username email"),
+      Registration.countDocuments(query),
+    ])
+
+    const response = {
+      success: true,
+      data: { registrations },
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    }
+
+    // console.log("Fetch registrations successful")
+    return NextResponse.json(response)
+  } catch (error) {
+    // console.error("Server error while fetching registrations:", error)
+    return NextResponse.json({ success: false, error: "Server error" }, { status: 500 })
+  }
+}
+
+// Handle unsupported methods
+export async function PUT() {
+  return NextResponse.json({ message: "Method not allowed" }, { status: 405 })
+}
+
+export async function DELETE() {
+  return NextResponse.json({ message: "Method not allowed" }, { status: 405 })
+}
