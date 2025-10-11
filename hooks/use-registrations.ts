@@ -115,7 +115,7 @@ export function useRegistrations(params?: UseRegistrationsParams): UseRegistrati
   );
 
   useEffect(() => {
-    if (paramsKey) {
+    if (paramsKey && params?.user) {
       fetchRegistrations(); // Line 45
     }
   }, [paramsKey]);
@@ -133,11 +133,13 @@ export function useRegistrations(params?: UseRegistrationsParams): UseRegistrati
         });
         return response;
       } else {
-        console.error("Create registration failed:", response.error);
+        // console.error("Create registration failed:", response.error);
+        // Handle duplicate registration case more gracefully
+        const isDuplicate = response.error?.includes("already registered");
         toast({
-          title: "Error",
+          title: isDuplicate ? "Already Registered" : "Error",
           description: response.error || "Failed to create registration",
-          variant: "destructive",
+          variant: isDuplicate ? "default" : "destructive",
         });
         return response;
       }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,60 +11,40 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { CreditCard, Calendar, DollarSign, CheckCircle, Clock, AlertCircle, Download, Search } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { usePayments } from "@/hooks/use-payments"
+import { useCurrentUser } from "@/hooks/use-current-user"
 
 export default function StudentPaymentsPage() {
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null)
   const [paymentMethod, setPaymentMethod] = useState("")
   const { toast } = useToast()
+  const { userData, loading: userLoading } = useCurrentUser()
+  const currentUserId = userData?.id
 
-  const paymentHistory = [
-    {
-      id: "PAY001",
-      hackathon: "AI Innovation Challenge 2024",
-      amount: 50,
-      status: "Completed",
-      date: "2024-01-15",
-      method: "PayPal",
-      transactionId: "TXN123456789",
-    },
-    {
-      id: "PAY002",
-      hackathon: "Web3 Developer Summit",
-      amount: 75,
-      status: "Completed",
-      date: "2024-01-10",
-      method: "PayPal",
-      transactionId: "TXN987654321",
-    },
-    {
-      id: "PAY003",
-      hackathon: "Mobile App Hackathon",
-      amount: 60,
-      status: "Pending",
-      date: "2024-01-20",
-      method: "PayPal",
-      transactionId: "TXN456789123",
-    },
-  ]
+  const {
+    payments,
+    loading: paymentsLoading,
+    updatePayment,
+  } = usePayments({
+    user: currentUserId,
+  })
 
-  const pendingPayments = [
-    {
-      id: "PEND001",
-      hackathon: "Blockchain Innovation Challenge",
-      amount: 80,
-      dueDate: "2024-01-25",
-      description: "Registration fee for blockchain hackathon",
-    },
-    {
-      id: "PEND002",
-      hackathon: "IoT Solutions Hackathon",
-      amount: 65,
-      dueDate: "2024-02-01",
-      description: "Early bird registration fee",
-    },
-  ]
+  // Separate payments by status
+  const completedPayments = payments.filter((payment: any) => payment.status === "Completed")
+  const pendingPayments = payments.filter((payment: any) => payment.status === "Pending")
+  const failedPayments = payments.filter((payment: any) => payment.status === "Failed")
 
-  const handlePayment = (paymentId: string) => {
+  // Calculate totals
+  const totalPaid = completedPayments.reduce((sum: number, payment: any) => sum + payment.amount, 0)
+  const totalPending = pendingPayments.reduce((sum: number, payment: any) => sum + payment.amount, 0)
+  const thisMonthPayments = completedPayments.filter((payment: any) => {
+    const paymentDate = new Date(payment.paymentDate || payment.createdAt)
+    const now = new Date()
+    return paymentDate.getMonth() === now.getMonth() && paymentDate.getFullYear() === now.getFullYear()
+  })
+  const thisMonthTotal = thisMonthPayments.reduce((sum: number, payment: any) => sum + payment.amount, 0)
+
+  const handlePayment = async (paymentId: string) => {
     if (!paymentMethod) {
       toast({
         title: "Payment Method Required",
@@ -81,12 +61,34 @@ export default function StudentPaymentsPage() {
     })
 
     // In a real app, this would redirect to PayPal
-    setTimeout(() => {
-      toast({
-        title: "Payment Successful",
-        description: "Your payment has been processed successfully.",
-      })
-      setSelectedPayment(null)
+    setTimeout(async () => {
+      try {
+        // Update payment status to completed
+        const result = await updatePayment(paymentId, {
+          status: "Completed",
+          transactionId: `TXN${Date.now()}`,
+        })
+
+        if (result.success) {
+          toast({
+            title: "Payment Successful",
+            description: "Your payment has been processed successfully.",
+          })
+          setSelectedPayment(null)
+        } else {
+          toast({
+            title: "Payment Failed",
+            description: "Failed to update payment status.",
+            variant: "destructive",
+          })
+        }
+      } catch (error) {
+        toast({
+          title: "Payment Failed",
+          description: "An error occurred while processing your payment.",
+          variant: "destructive",
+        })
+      }
     }, 2000)
   }
 
@@ -138,8 +140,8 @@ export default function StudentPaymentsPage() {
               <DollarSign className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">$185</div>
-              <p className="text-xs text-gray-600 mt-1">Across 3 hackathons</p>
+              <div className="text-2xl font-bold text-green-600">${totalPaid}</div>
+              <p className="text-xs text-gray-600 mt-1">Across {completedPayments.length} hackathons</p>
             </CardContent>
           </Card>
 
@@ -149,8 +151,8 @@ export default function StudentPaymentsPage() {
               <Clock className="h-4 w-4 text-yellow-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">$145</div>
-              <p className="text-xs text-gray-600 mt-1">2 payments due</p>
+              <div className="text-2xl font-bold text-yellow-600">${totalPending}</div>
+              <p className="text-xs text-gray-600 mt-1">{pendingPayments.length} payments due</p>
             </CardContent>
           </Card>
 
@@ -160,8 +162,8 @@ export default function StudentPaymentsPage() {
               <Calendar className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">$125</div>
-              <p className="text-xs text-gray-600 mt-1">2 transactions</p>
+              <div className="text-2xl font-bold text-blue-600">${thisMonthTotal}</div>
+              <p className="text-xs text-gray-600 mt-1">{thisMonthPayments.length} transactions</p>
             </CardContent>
           </Card>
         </div>
@@ -174,26 +176,33 @@ export default function StudentPaymentsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {pendingPayments.map((payment) => (
-                <div key={payment.id} className="p-4 border rounded-lg bg-yellow-50 border-yellow-200">
+              {pendingPayments.map((payment: any) => (
+                <div key={payment._id} className="p-4 border rounded-lg bg-yellow-50 border-yellow-200">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h4 className="font-medium">{payment.hackathon}</h4>
+                      <h4 className="font-medium">
+                        {typeof payment.hackathon === 'object' ? payment.hackathon.title : payment.hackathon}
+                      </h4>
                       <p className="text-sm text-gray-600 mt-1">{payment.description}</p>
                       <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
                         <AlertCircle className="h-3 w-3" />
-                        Due: {payment.dueDate}
+                        Due: {new Date(payment.dueDate).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-bold text-gray-900">${payment.amount}</p>
-                      <Button onClick={() => setSelectedPayment(payment.id)} className="mt-2">
+                      <Button onClick={() => setSelectedPayment(payment._id)} className="mt-2">
                         Pay Now
                       </Button>
                     </div>
                   </div>
                 </div>
               ))}
+              {pendingPayments.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">No pending payments</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -216,20 +225,26 @@ export default function StudentPaymentsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {paymentHistory.map((payment) => (
-                <div key={payment.id} className="flex items-center justify-between p-4 border rounded-lg">
+              {[...completedPayments, ...failedPayments].map((payment: any) => (
+                <div key={payment._id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center gap-4">
                     <div className="p-2 bg-blue-100 rounded-lg">
                       <CreditCard className="h-5 w-5 text-blue-600" />
                     </div>
                     <div>
-                      <h4 className="font-medium">{payment.hackathon}</h4>
+                      <h4 className="font-medium">
+                        {typeof payment.hackathon === 'object' ? payment.hackathon.title : payment.hackathon}
+                      </h4>
                       <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
-                        <span>{payment.date}</span>
+                        <span>{new Date(payment.paymentDate || payment.createdAt).toLocaleDateString()}</span>
                         <span>•</span>
-                        <span>{payment.method}</span>
-                        <span>•</span>
-                        <span>{payment.transactionId}</span>
+                        <span>{payment.paymentMethod}</span>
+                        {payment.transactionId && (
+                          <>
+                            <span>•</span>
+                            <span>{payment.transactionId}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -247,6 +262,11 @@ export default function StudentPaymentsPage() {
                   </div>
                 </div>
               ))}
+              {completedPayments.length === 0 && failedPayments.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">No payment history</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -264,7 +284,7 @@ export default function StudentPaymentsPage() {
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Amount to Pay:</span>
                     <span className="text-2xl font-bold text-blue-600">
-                      ${pendingPayments.find((p) => p.id === selectedPayment)?.amount}
+                      ${pendingPayments.find((p: any) => p._id === selectedPayment)?.amount}
                     </span>
                   </div>
                 </div>

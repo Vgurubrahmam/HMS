@@ -3,6 +3,7 @@ import db from "@/lib/db"
 import Registration from '@/lib/models/Registration';
 import User from '@/lib/models/User';
 import Hackathon from '@/lib/models/Hackathon';
+import Payment from '@/lib/models/Payment';
 
 
 
@@ -26,16 +27,25 @@ export async function POST(req: NextRequest): Promise<NextResponse<JsonResponse>
       console.log("Hackathon registration request body:", body)
     } catch (error) {
       // console.error("Invalid request body for hackathon registration:", error)
-      return NextResponse.json({ message: "Invalid JSON payload" }, { status: 400 })
+      return NextResponse.json({ success: false, message: "Invalid JSON payload" }, { status: 400 })
     }
 
     const { user, hackathon, paymentStatus } = body
 
     // Validate required fields
     if (!user || !hackathon) {
-      return NextResponse.json({ message: "User and Hackathon fields are required" }, { status: 400 })
+      return NextResponse.json({ success: false, message: "User and Hackathon fields are required" }, { status: 400 })
     }
 
+    // Check if user is already registered for this hackathon
+    const existingRegistration = await Registration.findOne({ user, hackathon })
+    if (existingRegistration) {
+      return NextResponse.json({ 
+        success: false, 
+        message: "You are already registered for this hackathon",
+        data: existingRegistration
+      }, { status: 409 })
+    }
 
     // Create registration object
     const registrationData = {
@@ -50,11 +60,37 @@ export async function POST(req: NextRequest): Promise<NextResponse<JsonResponse>
     const newRegistration = new Registration(registrationData)
     await newRegistration.save()
 
-    console.log("Hackathon registration successful")
+    // Get hackathon details for payment
+    const hackathonDetails = await Hackathon.findById(hackathon)
+    if (!hackathonDetails) {
+      return NextResponse.json({ success: false, message: "Hackathon not found" }, { status: 404 })
+    }
+
+    // Create payment record
+    const paymentData = {
+      user,
+      hackathon,
+      registration: newRegistration._id,
+      amount: hackathonDetails.registrationFee,
+      paymentMethod: "PayPal", // Default payment method
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      description: `Registration fee for ${hackathonDetails.title}`,
+    }
+
+    const newPayment = new Payment(paymentData)
+    await newPayment.save()
+
+    // Update registration with payment reference
+    newRegistration.payment = newPayment._id
+    await newRegistration.save()
+
+    console.log("Hackathon registration and payment created successfully")
 
     return NextResponse.json(
       {
+        success: true,
         message: "Hackathon registration successful",
+        data: newRegistration,
         resetFields: true,
         closeDialog: true,
       },
@@ -63,7 +99,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<JsonResponse>
   } catch (error) {
     console.error("Error in POST /api/registrations for hackathon registration:", error)
     return NextResponse.json(
-      { message: "Server error", error: error instanceof Error ? error.message : "Unknown error" },
+      { success: false, message: "Server error", error: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 },
     )
   }
@@ -93,7 +129,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     // Execute query with pagination
     const skip = (page - 1) * limit
     const [registrations, total] = await Promise.all([
-      Registration.find(query).skip(skip).limit(limit).populate("user", "username email"),
+      Registration.find(query)
+        .skip(skip)
+        .limit(limit)
+        .populate("user", "username email")
+        .populate("hackathon", "title registrationFee")
+        .populate("payment", "amount status paymentMethod dueDate"),
       Registration.countDocuments(query),
     ])
 

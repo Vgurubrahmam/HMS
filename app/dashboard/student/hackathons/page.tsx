@@ -25,10 +25,12 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { useHackathons } from "@/hooks/use-hackathons"
 import { useRegistrations } from "@/hooks/use-registrations"
+import { usePayments } from "@/hooks/use-payments"
+import { useCurrentUser } from "@/hooks/use-current-user"
 
 export default function StudentHackathonsPage() {
-  // Mock current user ID - in real app, get from auth context
-  const currentUserId = "60f1b2b3c4d5e6f7a8b9c0d3" // John Smith's ID from seed data
+  const { userData, loading: userLoading } = useCurrentUser()
+  const currentUserId = userData?.id
 
   const [selectedHackathon, setSelectedHackathon] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState("")
@@ -96,16 +98,47 @@ export default function StudentHackathonsPage() {
     user: currentUserId,
   })
 
-  const totalLoading = loading || hackathonsLoading || registrationsLoading
+  const {
+    payments,
+    loading: paymentsLoading,
+    updatePayment,
+  } = usePayments({
+    user: currentUserId,
+  })
 
-  // Get user's registered hackathons
-  const myRegistrations = registrations.map((r: any) => ({
-    ...r,
-    paymentStatus: r.paymentStatus || "Unknown",
-    registrationDate: r.registrationDate || new Date(),
-    paymentAmount: r.paymentAmount || 0,
-  }))
+  const totalLoading = loading || hackathonsLoading || registrationsLoading || paymentsLoading || userLoading
+
+  // Get user's registered hackathons with proper status
+  const myRegistrations = registrations.map((r: any) => {
+    const payment = r.payment;
+    let status = "Not Registered";
+    
+    if (r.paymentStatus === "Completed") {
+      status = "Registered";
+    } else if (r.paymentStatus === "Pending") {
+      status = "Pending";
+    } else if (payment && payment.status === "Completed") {
+      status = "Registered";
+    } else if (payment && payment.status === "Pending") {
+      status = "Pending";
+    }
+
+    return {
+      ...r,
+      status,
+      paymentStatus: r.paymentStatus || "Unknown",
+      registrationDate: r.registrationDate || new Date(),
+      paymentAmount: payment?.amount || r.hackathon?.registrationFee || 0,
+    };
+  });
+  
   const myHackathonIds = myRegistrations.map((r: any) => r.hackathon?._id)
+
+  // Function to get registration status for a hackathon
+  const getRegistrationStatus = (hackathonId: string) => {
+    const registration = myRegistrations.find((r: any) => r.hackathon?._id === hackathonId);
+    return registration ? registration.status : "Not Registered";
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -136,6 +169,26 @@ export default function StudentHackathonsPage() {
   }
 
   const handleRegister = async (hackathonId: string) => {
+    if (!currentUserId) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to register for hackathons",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Check if already registered
+    const registrationStatus = getRegistrationStatus(hackathonId)
+    if (registrationStatus !== "Not Registered") {
+      toast({
+        title: "Already Registered",
+        description: `You are already ${registrationStatus.toLowerCase()} for this hackathon`,
+        variant: "default",
+      })
+      return
+    }
+
     try {
       const response = await createRegistration({
         user: currentUserId,
@@ -149,11 +202,8 @@ export default function StudentHackathonsPage() {
         })
         refetch() // Refresh hackathons to update participant count
       } else {
-        toast({
-          title: "Registration Failed",
-          description: response.error || "Failed to register for hackathon",
-          variant: "destructive",
-        })
+        // Don't show error toast here as it's already handled in the hook
+        console.log("Registration failed:", response.error)
       }
     } catch (error) {
       toast({
@@ -269,7 +319,9 @@ export default function StudentHackathonsPage() {
             {/* Hackathons Grid */}
             <div className="grid gap-6">
               {Hackathons.map((hackathon: any) => {
-                const isRegistered = myHackathonIds.includes(hackathon._id)
+                const registrationStatus = getRegistrationStatus(hackathon._id)
+                const isRegistered = registrationStatus === "Registered"
+                const isPending = registrationStatus === "Pending"
                 const isFavorite = favorites.includes(hackathon._id)
                 const isRegistrationOpen = hackathon.status === "Registration Open"
                 const isUpcoming = new Date(hackathon.startDate) > new Date()
@@ -296,7 +348,8 @@ export default function StudentHackathonsPage() {
                           <div className="flex items-center gap-2 mt-2">
                             <Badge className={getStatusColor(hackathon.status)}>{hackathon.status}</Badge>
                             <Badge className={getDifficultyColor(hackathon.difficulty)}>{hackathon.difficulty}</Badge>
-                            {isRegistered && <Badge variant="outline">Registered</Badge>}
+                            {registrationStatus === "Registered" && <Badge variant="outline" className="bg-green-100 text-green-800">Registered</Badge>}
+                            {registrationStatus === "Pending" && <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Pending</Badge>}
                           </div>
                         </div>
                         <div className="flex gap-2">
@@ -345,10 +398,16 @@ export default function StudentHackathonsPage() {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          {isRegistrationOpen && !isRegistered && isUpcoming && (
+                          {isRegistrationOpen && registrationStatus === "Not Registered" && isUpcoming && (
                             <Button onClick={() => handleRegister(hackathon._id)}>Register Now</Button>
                           )}
-                          {isRegistered && <Button variant="outline">View Team</Button>}
+                          {registrationStatus === "Registered" && <Button variant="outline">View Team</Button>}
+                          {registrationStatus === "Pending" && (
+                            <Button variant="outline" className="bg-yellow-100 text-yellow-800">
+                              <Clock className="mr-2 h-4 w-4" />
+                              Payment Pending
+                            </Button>
+                          )}
                           {!isUpcoming && hackathon.status === "Planning" && (
                             <Button variant="outline" disabled>
                               <Clock className="mr-2 h-4 w-4" />
@@ -391,10 +450,10 @@ export default function StudentHackathonsPage() {
                           <CardDescription>{hackathon.description}</CardDescription>
                           <div className="flex items-center gap-2 mt-2">
                             <Badge className={getStatusColor(hackathon.status)}>{hackathon.status}</Badge>
-                            <Badge variant="outline">Registered</Badge>
+                            <Badge variant="outline" className="bg-green-100 text-green-800">Registered</Badge>
                             {registration && (
-                              <Badge variant={registration.paymentStatus === "Paid" ? "default" : "secondary"}>
-                                {registration.paymentStatus}
+                              <Badge variant={registration.status === "Registered" ? "default" : "secondary"}>
+                                {registration.status}
                               </Badge>
                             )}
                           </div>
@@ -429,7 +488,7 @@ export default function StudentHackathonsPage() {
                         <Button>View Team</Button>
                         <Button variant="outline">Track Progress</Button>
                         <Button variant="outline">Contact Mentor</Button>
-                        {registration?.paymentStatus === "Pending" && <Button>Complete Payment</Button>}
+                        {registration?.status === "Pending" && <Button>Complete Payment</Button>}
                       </div>
                     </CardContent>
                   </Card>
@@ -457,7 +516,8 @@ export default function StudentHackathonsPage() {
           <TabsContent value="favorites" className="space-y-6">
             <div className="grid gap-6">
               {favoriteHackathons.map((hackathon: any) => {
-                const isRegistered = myHackathonIds.includes(hackathon._id)
+                const registrationStatus = getRegistrationStatus(hackathon._id)
+                const isRegistered = registrationStatus === "Registered"
 
                 return (
                   <Card key={hackathon._id} className="border-l-4 border-l-red-500">
@@ -491,10 +551,16 @@ export default function StudentHackathonsPage() {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        {!isRegistered && hackathon.status === "Registration Open" && (
+                        {registrationStatus === "Not Registered" && hackathon.status === "Registration Open" && (
                           <Button onClick={() => handleRegister(hackathon._id)}>Register Now</Button>
                         )}
-                        {isRegistered && <Button variant="outline">View Team</Button>}
+                        {registrationStatus === "Registered" && <Button variant="outline">View Team</Button>}
+                        {registrationStatus === "Pending" && (
+                          <Button variant="outline" className="bg-yellow-100 text-yellow-800">
+                            <Clock className="mr-2 h-4 w-4" />
+                            Payment Pending
+                          </Button>
+                        )}
                         <Button variant="outline" onClick={() => setSelectedHackathon(hackathon)}>
                           View Details
                         </Button>
@@ -678,7 +744,7 @@ export default function StudentHackathonsPage() {
 
               <div className="flex justify-end gap-2 pt-4">
                 {selectedHackathon.status === "Registration Open" &&
-                  !myHackathonIds.includes(selectedHackathon._id) && (
+                  getRegistrationStatus(selectedHackathon._id) === "Not Registered" && (
                     <Button
                       onClick={() => {
                         handleRegister(selectedHackathon._id)
@@ -688,7 +754,13 @@ export default function StudentHackathonsPage() {
                       Register for Hackathon
                     </Button>
                   )}
-                {myHackathonIds.includes(selectedHackathon._id) && <Button variant="outline">View My Team</Button>}
+                {getRegistrationStatus(selectedHackathon._id) === "Registered" && <Button variant="outline">View My Team</Button>}
+                {getRegistrationStatus(selectedHackathon._id) === "Pending" && (
+                  <Button variant="outline" className="bg-yellow-100 text-yellow-800">
+                    <Clock className="mr-2 h-4 w-4" />
+                    Payment Pending
+                  </Button>
+                )}
                 <Button variant="ghost" onClick={() => handleToggleFavorite(selectedHackathon._id)}>
                   <Heart
                     className={`mr-2 h-4 w-4 ${favorites.includes(selectedHackathon._id) ? "fill-red-500 text-red-500" : "text-gray-400"}`}

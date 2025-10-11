@@ -42,7 +42,9 @@ export function useCertificates(params?: {
   }
 
   useEffect(() => {
-    fetchCertificates()
+    if (params?.user) {
+      fetchCertificates()
+    }
   }, [params?.user, params?.hackathon, params?.type, params?.page])
 
   const createCertificate = async (data: any) => {

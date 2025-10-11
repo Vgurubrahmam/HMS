@@ -11,10 +11,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Award, Download, Share2, Eye, Search, Calendar, Trophy, Medal, Star, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useCertificates } from "@/hooks/use-certificates"
+import { useCurrentUser } from "@/hooks/use-current-user"
 
 export default function StudentCertificatesPage() {
-  // Mock current user ID - in real app, get from auth context
-  const currentUserId = "60f1b2b3c4d5e6f7a8b9c0d3" // John Smith's ID from seed data
+  const { userData, loading: userLoading } = useCurrentUser()
+  const currentUserId = userData?.id
 
   const [selectedCertificate, setSelectedCertificate] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState("")

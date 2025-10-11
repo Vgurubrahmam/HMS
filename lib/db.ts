@@ -2,6 +2,7 @@ import mongoose from "mongoose"
 import User from "./models/User"; // Ensure User model is registered
 import Registration from "./models/Registration"; // Ensure Registration model is registered
 import Hackathon from "./models/Hackathon"; // Ensure Hackathon model is registered
+import Payment from "./models/Payment"; // Ensure Payment model is registered
 
 const db= async()=>{
     try{
@@ -19,6 +20,7 @@ const db= async()=>{
         User;
         Registration;
         Hackathon;
+        Payment;
 
         console.log("mongodb connected")
         const connectionState = mongoose.connection.readyState;

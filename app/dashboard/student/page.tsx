@@ -10,11 +10,12 @@ import { useHackathons } from "@/hooks/use-hackathons"
 import { useRegistrations } from "@/hooks/use-registrations"
 import { useCertificates } from "@/hooks/use-certificates"
 import { useTeams } from "@/hooks/use-teams"
+import { useCurrentUser } from "@/hooks/use-current-user"
 import Link from "next/link"
 
 export default function StudentDashboard() {
-  // Mock current user ID - in real app, get from auth context
-  const currentUserId = "60f1b2b3c4d5e6f7a8b9c0d3" // John Smith's ID from seed data
+  const { userData, loading: userLoading } = useCurrentUser()
+  const currentUserId = userData?.id
 
   const { hackathons, loading: hackathonsLoading } = useHackathons({
     status: "Registration Open",
@@ -33,7 +34,7 @@ export default function StudentDashboard() {
 
   const { teams, loading: teamsLoading } = useTeams({ limit: 5 })
 
-  const loading = hackathonsLoading || registrationsLoading || certificatesLoading || teamsLoading
+  const loading = hackathonsLoading || registrationsLoading || certificatesLoading || teamsLoading || userLoading
 
   // Calculate statistics from real data
   const myRegistrations = registrations.filter((r: any) => r.user?._id === currentUserId)

@@ -20,6 +20,11 @@ const RegistrationSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  payment: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Payment",
+    required: false,
+  },
 });
 
 export default mongoose.models.Registration || mongoose.model("Registration", RegistrationSchema);
