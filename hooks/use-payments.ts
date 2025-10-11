@@ -128,9 +128,7 @@ export function usePayments(params?: UsePaymentsParams): UsePaymentsResult {
   );
 
   useEffect(() => {
-    if (paramsKey && params?.user) {
-      fetchPayments();
-    }
+    fetchPayments();
   }, [paramsKey]);
 
   const createPayment = async (data: CreatePaymentData): Promise<ApiResponse> => {
