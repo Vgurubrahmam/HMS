@@ -91,12 +91,12 @@ export async function POST(req: Request): Promise<Response> {
       // Generate token with existing user data
       const token: string = jwt.sign(
         {
+          id: user._id,
           username: user.username,
           email: user.email,
           image: user.image,
           role: user.role,
-          userId: user._id,
-        } as TokenPayload,
+        },
         secretkey,
         { expiresIn: "7d" },
       )
@@ -165,12 +165,12 @@ export async function POST(req: Request): Promise<Response> {
       // Generate token for new user
       const token: string = jwt.sign(
         {
+          id: user._id,
           username: user.username,
           email: user.email,
           image: user.image,
           role: user.role,
-          userId: user._id,
-        } as TokenPayload,
+        },
         secretkey,
         { expiresIn: "7d" },
       )

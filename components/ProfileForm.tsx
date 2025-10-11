@@ -74,6 +74,16 @@ export default function ProfileForm({ userProfile, onProfileUpdate }: ProfileFor
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Validate required fields
+    if (!formData.userId) {
+      toast({
+        title: "Error",
+        description: "User ID is required",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       const response = await fetch(`/api/profiles/${formData.userId}`, {
         method: "PUT",
@@ -82,20 +92,23 @@ export default function ProfileForm({ userProfile, onProfileUpdate }: ProfileFor
       })
 
       if (!response.ok) {
-        throw new Error("Failed to update profile")
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Failed to update profile")
       }
+
+      const result = await response.json()
 
       toast({
         title: "Success",
         description: "Profile updated successfully",
       })
 
-      onProfileUpdate(formData)
+      onProfileUpdate(result.data || formData)
     } catch (error) {
       console.error("Error updating profile:", error)
       toast({
         title: "Error",
-        description: "Failed to update profile. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to update profile. Please try again.",
         variant: "destructive",
       })
     }

@@ -102,6 +102,9 @@ export function DashboardLayout({
     expertise: [] as string[],
     company: "",
     experience: "",
+    // Coordinator specific fields
+    managementRole: "",
+    employeeId: "",
   })
   const [userRole, setUserRole] = useState<"coordinator" | "faculty" | "student" | "mentor">(initialUserRole);
   const [userImage, setUserImage] = useState("");
@@ -120,7 +123,7 @@ useEffect(() => {
           setUserData(prev => ({
             ...prev,
             username,
-            id: decoded.id || "",
+            id: decoded.id || decoded.userId || "",
             email: decoded.email || "",
           }));
 
@@ -142,8 +145,9 @@ useEffect(() => {
           setUserImage(decoded.image || "/placeholder.svg");
 
           // Fetch profile data
-          if (decoded.id) {
-            fetchProfileData(decoded.id);
+          const userId = decoded.id || decoded.userId;
+          if (userId) {
+            fetchProfileData(userId);
           }
         }
       } catch (err) {
@@ -217,7 +221,7 @@ useEffect(() => {
           setUserImage(imageUrl || "/placeholder.svg");
           
           // Update localStorage with latest data
-          localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
+          // localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
         }
       }
     } catch (error) {
@@ -227,6 +231,8 @@ useEffect(() => {
 
   const handleLogout = () => {
     localStorage.removeItem("token")
+    localStorage.removeItem("userProfile")
+    localStorage.removeItem("googleUserProfile")
     router.push("/auth/login")
   }
 
@@ -346,6 +352,8 @@ useEffect(() => {
               expertise: userData.expertise,
               company: userData.company,
               experience: userData.experience,
+              managementRole: userData.managementRole,
+              employeeId: userData.employeeId,
             }} 
             onProfileUpdate={(updatedProfile) => {
               setUserData(prev => ({
