@@ -1,3 +1,5 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Code2, Component } from "lucide-react"
@@ -7,8 +9,16 @@ import { Navbar } from "@/components/navbar"
 import { Github, Linkedin, Mail, ArrowUp } from "lucide-react"
 import { AppProps } from "next/app"
 import { SessionProvider } from "next-auth/react"
+import { useState, useEffect } from "react"
 
 export default function HomePage({Component,pageProps}:AppProps) {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  useEffect(() => {
+    // Check if token exists in localStorage
+    const token = localStorage.getItem('token') || localStorage.getItem('authToken') || localStorage.getItem('accessToken')
+    setIsLoggedIn(!!token)
+  }, [])
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
@@ -36,11 +46,13 @@ export default function HomePage({Component,pageProps}:AppProps) {
             designed for coordinators, faculty, students, and mentors.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
-            <Button size="lg" asChild>
-              <Link href="/auth/login">
-                Get Started <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
+            {!isLoggedIn && (
+              <Button size="lg" asChild>
+                <Link href="/auth/login">
+                  Get Started <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            )}
             <Button size="lg" variant="outline" asChild>
               <Link href="/demo">View Demo</Link>
             </Button>
@@ -167,18 +179,20 @@ export default function HomePage({Component,pageProps}:AppProps) {
               <Link href="/" className="flex items-center gap-2 font-bold text-xl">
                 <Code2 className="h-6 w-6 text-blue-600" />
                 <p className="text-black dark:text-white w-fit">
-                  HackathonMS
+                  HackOps
 
                 </p>
               </Link>
               <CardContent className="py-2 text-start">
                 <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
                 <p className="text-xl mb-8 opacity-90">Join thousands of hackathon organizers who trust our platform</p>
-                <Button size="lg" variant="secondary" asChild>
-                  <Link href="/auth/register">
-                    Create Account <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
+                {!isLoggedIn && (
+                  <Button size="lg" variant="secondary" asChild>
+                    <Link href="/auth/register">
+                      Create Account <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                )}
               </CardContent>
             </div>
 
@@ -285,7 +299,7 @@ export default function HomePage({Component,pageProps}:AppProps) {
           </div>
 
           <div className="border-t border-border mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-muted-foreground text-sm">© {new Date().getFullYear()} HackathonMS. All rights reserved.</p>
+            <p className="text-muted-foreground text-sm">© {new Date().getFullYear()} HackOps. All rights reserved.</p>
             <p className="text-muted-foreground text-sm mt-2 md:mt-0">
               Built with Next.js, Tailwind CSS, and Framer Motion
             </p>

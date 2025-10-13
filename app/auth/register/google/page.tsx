@@ -24,7 +24,7 @@ function GoogleRegisterContent() {
   const handleGoogleSignupSuccess = (data: any) => {
     toast({
       title: "Account Created Successfully!",
-      description: `Welcome to HackathonMS! Your ${data.roleData.role} account has been created.`,
+      description: `Welcome to HackOps! Your ${data.roleData.role} account has been created.`,
     })
 
     // Redirect to appropriate dashboard
@@ -177,7 +177,7 @@ export default function GoogleRegisterPage() {
                 <CardTitle>Sign up with Google</CardTitle>
               </Link>
             </div>
-            <CardDescription>Create your HackathonMS account using Google</CardDescription>
+            <CardDescription>Create your HackOps account using Google</CardDescription>
           </CardHeader>
           <CardContent>
             <ClientOnlyGoogleAuth>

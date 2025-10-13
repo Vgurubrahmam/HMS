@@ -98,7 +98,7 @@ export async function POST(req: Request): Promise<Response> {
           role: user.role,
         },
         secretkey,
-        { expiresIn: "7d" },
+        { expiresIn: "2h" },
       )
 
       return NextResponse.json({
@@ -172,7 +172,7 @@ export async function POST(req: Request): Promise<Response> {
           role: user.role,
         },
         secretkey,
-        { expiresIn: "7d" },
+        { expiresIn: "2h" },
       )
 
       return NextResponse.json({
@@ -183,7 +183,7 @@ export async function POST(req: Request): Promise<Response> {
           userId: user._id,
         } as RoleData,
         image: user.image,
-        message: `Welcome to HackathonMS, ${user.username}! Your ${normalizedRole} account has been created.`,
+        message: `Welcome to HackOps, ${user.username}! Your ${normalizedRole} account has been created.`,
         userType: "new",
       })
     }

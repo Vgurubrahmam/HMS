@@ -97,7 +97,7 @@ export default function RegisterPage() {
             <CardTitle>
               <Link href="/" className="inline-flex items-center gap-2 text-2xl font-bold mb-2">
                 <Code2 className="h-8 w-8 text-blue-600" />
-                Join HackathonMS
+                Join HackOps
               </Link>
             </CardTitle>
             <CardDescription>Fill in your details to create your account</CardDescription>

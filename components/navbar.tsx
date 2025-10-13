@@ -174,12 +174,12 @@ export function Navbar() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile" className="cursor-pointer">
+                  {/* <DropdownMenuItem asChild>
+                    <Link href="/profiles" className="cursor-pointer">
                       <User className="mr-2 h-4 w-4" />
                       <span>Profile</span>
                     </Link>
-                  </DropdownMenuItem>
+                  </DropdownMenuItem> */}
                   <DropdownMenuItem>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
