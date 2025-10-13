@@ -23,9 +23,9 @@ const TeamSchema = new Schema<ITeam>(
   {
     name: { type: String, required: true },
     hackathon: { type: Schema.Types.ObjectId, ref: "hackathons" },
-    members: [{ type: Schema.Types.ObjectId }],
-    teamLead: { type: Schema.Types.ObjectId },
-    mentor: { type: Schema.Types.ObjectId },
+    members: [{ type: Schema.Types.ObjectId, ref: "users" }],
+    teamLead: { type: Schema.Types.ObjectId, ref: "users" },
+    mentor: { type: Schema.Types.ObjectId, ref: "users" },
     projectTitle: { type: String, required: true },
     projectDescription: { type: String },
     progress: { type: Number, default: 0, min: 0, max: 100 },

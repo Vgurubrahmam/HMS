@@ -49,6 +49,41 @@ export default function FacultyHackathonsPage() {
 
   const { toast } = useToast()
 
+  const fetchHackathons = async () => {
+  try {
+    const res = await fetch("/api/hackathons", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
+    })
+    const data = await res.json()
+
+    if (res.ok) {
+      setHackathons(data.data)
+      // toast({
+      //   title: "Success",
+      //   description: "Hackathons fetched successfully",
+      // })
+      calculateStats(data.data)
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: data.message || "Error feteching hackthons"
+      })
+    }
+
+  } catch (error: any) {
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: error.message || "Something went wrong while fetching hackathons"
+
+    })
+  } finally {
+    setLoading(false)
+  }
+}
+
   useEffect(() => {
     fetchHackathons()
   }, [])
@@ -56,45 +91,6 @@ export default function FacultyHackathonsPage() {
   useEffect(() => {
     filterHackathons()
   }, [hackathons, searchTerm, statusFilter, difficultyFilter])
-
-// get methods
- 
-    const fetchHackathons = async () => {
-      try {
-        const res = await fetch("/api/hackathons", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" }
-        })
-        const data = await res.json()
-
-        if (res.ok) {
-          setHackathons(data.data)
-          // toast({
-          //   title: "Success",
-          //   description: "Hackathons fetched successfully",
-          // })
-          calculateStats(data.data)
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: data.message || "Error feteching hackthons"
-          })
-        }
-
-      } catch (error: any) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: error.message || "Something went wrong while fetching hackathons"
-
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchHackathons()
-  }, [])
 
   const calculateStats = (hackathonData: HackathonData[]) => {
     const totalHackathons = hackathonData.length

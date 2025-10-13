@@ -6,37 +6,6 @@ import Hackathon from "@/lib/models/Hackathon"
 import mongoose from "mongoose"
 
 export async function GET(request: NextRequest) {
-  await db()
-   try{
-    // Define the TeamsData type based on your Team schema
-    type TeamsData = {
-      _id: string;
-      name: string;
-      hackathon: mongoose.Types.ObjectId;
-      members: mongoose.Types.ObjectId[];
-      teamLead: mongoose.Types.ObjectId;
-      mentor?: mongoose.Types.ObjectId;
-      projectTitle: string;
-      projectDescription?: string;
-      room?: string;
-      createdAt?: Date;
-      updatedAt?: Date;
-    };
-
-    const data: TeamsData[] = await Team.find();
-    return NextResponse.json(
-         { message: "Teams  Feteched  successfully", data },
-         { status: 201 }
-       );
-     } catch (error) {
-       console.error("Error fetching hackathons:", error);
-       return NextResponse.json({ message: "Internal Server Error" } );
-     }
-}
-
-
-// Detailed GET endpoint with filtering, pagination, and population
-export async function GETDetailed(request: NextRequest) {
   try {
     await db();
 
@@ -64,10 +33,10 @@ export async function GETDetailed(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     const teams = await Team.find(query)
-      .populate("hackathon", "title")
-      .populate("members", "name email role")
-      .populate("teamLead", "name email")
-      .populate("mentor", "name email")
+      .populate("hackathon", "title description startDate endDate")
+      .populate("members", "username name email role skills image")
+      .populate("teamLead", "username name email role image")
+      .populate("mentor", "username name email expertise image")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -90,10 +59,12 @@ export async function GETDetailed(request: NextRequest) {
   }
 }
 
+
+
 export async function POST(request: NextRequest) {
   try {
     await db()
-    console.log("called teams");
+    console.log("Creating team");
     
     // Explicitly register the User model to ensure it is accessible
     if (!mongoose.models.users) {
@@ -103,7 +74,26 @@ export async function POST(request: NextRequest) {
     console.log("Mongoose connection state:", mongoose.connection.readyState);
 
     const body = await request.json()
+    console.log("Team creation data:", body)
+    
     const { name, hackathon, members, teamLead, mentor, projectTitle, projectDescription, room } = body
+
+    // Validate required fields
+    if (!name || !hackathon || !projectTitle || !teamLead) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Missing required fields: name, hackathon, projectTitle, teamLead" 
+      }, { status: 400 });
+    }
+
+    // Validate ObjectId formats
+    if (!mongoose.Types.ObjectId.isValid(hackathon)) {
+      return NextResponse.json({ success: false, error: "Invalid hackathon ID" }, { status: 400 });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(teamLead)) {
+      return NextResponse.json({ success: false, error: "Invalid team lead ID" }, { status: 400 });
+    }
 
     const hackathonExists = await Hackathon.findById(hackathon);
     if (!hackathonExists) {
@@ -115,10 +105,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Team lead not found" }, { status: 404 });
     }
 
+    // Ensure teamLead is included in members array
+    const allMembers = members && Array.isArray(members) ? members : [];
+    if (teamLead && !allMembers.includes(teamLead)) {
+      allMembers.unshift(teamLead); // Add team lead at the beginning
+    }
+
+    console.log("Final members array:", allMembers);
+    console.log("Team lead:", teamLead);
+
+    // Verify that all member IDs exist as users
+    for (const memberId of allMembers) {
+      if (!mongoose.Types.ObjectId.isValid(memberId)) {
+        return NextResponse.json({ 
+          success: false, 
+          error: `Invalid member ID format: ${memberId}` 
+        }, { status: 400 });
+      }
+      
+      const userExists = await UserModel.findById(memberId);
+      if (!userExists) {
+        console.log(`User not found for ID: ${memberId}`);
+        return NextResponse.json({ 
+          success: false, 
+          error: `Member with ID ${memberId} not found` 
+        }, { status: 404 });
+      }
+      console.log(`User found: ${userExists.username || userExists.name} (${memberId})`);
+    }
+
     const team = new Team({
       name,
       hackathon,
-      members: members || [teamLead],
+      members: allMembers,
       teamLead,
       mentor,
       projectTitle,
@@ -127,12 +146,21 @@ export async function POST(request: NextRequest) {
     });
 
     await team.save();
+    console.log("Team saved, members before population:", team.members);
+    
     await team.populate([
-      { path: "hackathon", select: "title" },
-      { path: "members", select: "name email role" },
-      { path: "teamLead", select: "name email" },
-      { path: "mentor", select: "name email" },
+      { path: "hackathon", select: "title description startDate endDate" },
+      { path: "members", select: "username name email role skills image" },
+      { path: "teamLead", select: "username name email role image" },
+      { path: "mentor", select: "username name email expertise image" },
     ]);
+
+    console.log("Team after population:", {
+      name: team.name,
+      members: team.members,
+      teamLead: team.teamLead,
+      membersCount: team.members?.length
+    });
 
     return NextResponse.json(
       {
@@ -143,6 +171,13 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Error creating team:", error)
-    return NextResponse.json({ success: false, error: "Failed to create team" }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    console.error("Error details:", errorMessage)
+    
+    return NextResponse.json({ 
+      success: false, 
+      error: "Failed to create team",
+      details: errorMessage
+    }, { status: 500 })
   }
 }

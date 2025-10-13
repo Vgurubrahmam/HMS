@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +11,7 @@ import { Award, Download, Share2, Eye, Search, Calendar, Trophy, Medal, Star, Lo
 import { useToast } from "@/hooks/use-toast"
 import { useCertificates } from "@/hooks/use-certificates"
 import { useCurrentUser } from "@/hooks/use-current-user"
+import { DashboardLayout } from "@/components/dashboard-layout"
 
 export default function StudentCertificatesPage() {
   const { userData, loading: userLoading } = useCurrentUser()

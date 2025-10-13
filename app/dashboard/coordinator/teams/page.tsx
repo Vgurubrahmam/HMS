@@ -43,10 +43,11 @@ import { useUsers } from "@/hooks/use-users"
 
 export default function CoordinatorTeamsPage() {
   const [selectedTeam, setSelectedTeam] = useState<any>(null)
-  
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = useState(false)
   const [selectedTeamForMembers, setSelectedTeamForMembers] = useState<any>(null)
+  const [editingTeam, setEditingTeam] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [loading,setLoading]=useState(false)
@@ -70,6 +71,71 @@ const formmatedTeam={
     teamLead: newTeam.teamLead,
     members: newTeam.members,
 }
+
+  const handleEditTeam = (team: any) => {
+    setEditingTeam(team);
+    setNewTeam({
+      name: team.name || "",
+      hackathon: team.hackathon?._id || "",
+      projectTitle: team.projectTitle || "",
+      projectDescription: team.projectDescription || "",
+      room: team.room || "",
+      teamLead: team.teamLead?._id || "",
+      members: team.members?.filter((m: any) => m && m._id).map((m: any) => m._id) || [],
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateTeam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      console.log('Updating team with data:', formmatedTeam);
+      console.log('Team ID:', editingTeam._id);
+      
+      const response = await fetch(`/api/teams/${editingTeam._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formmatedTeam),
+      });
+
+      const data = await response.json();
+      console.log('Update response:', data);
+
+      if (!response.ok) {
+        console.error('Update failed with status:', response.status);
+        throw new Error(data.error || data.details || 'Failed to update team');
+      }
+
+      fetchTeams();
+      setNewTeam({
+        name: "",
+        hackathon: "",
+        projectTitle: "",
+        projectDescription: "",
+        room: "",
+        teamLead: "",
+        members: [],
+      });
+      setEditingTeam(null);
+      setIsEditDialogOpen(false);
+      
+      toast({
+        title: "Success",
+        description: "Team updated successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || 'An unexpected error occurred',
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   const { toast } = useToast()
 
   const { loading: teamsLoading, error: teamsError, createTeam, updateTeam, deleteTeam } = useTeams() as {
@@ -90,8 +156,8 @@ const formmatedTeam={
     pages: 1,
   });
   const [filters, setFilters] = useState({
-    hackathonId: '',
-    mentorId: '',
+    hackathonId: 'all',
+    mentorId: 'all',
     status: 'all',
   });
   const getStatusColor = (status: string) => {
@@ -160,6 +226,8 @@ const formmatedTeam={
      e.preventDefault();
     setLoading(true);
   try {
+    console.log('Creating team with data:', formmatedTeam);
+    
     const response = await fetch('/api/teams', {
       method: 'POST',
       headers: {
@@ -169,9 +237,11 @@ const formmatedTeam={
     });
 
     const data = await response.json();
+    console.log('Create response:', data);
 
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to create team');
+      console.error('Create failed with status:', response.status);
+      throw new Error(data.error || data.details || 'Failed to create team');
     }
 
     fetchTeams();
@@ -186,6 +256,16 @@ const formmatedTeam={
     });
     setSelectedTeam(null); // Clear edit-related state
     setIsCreateDialogOpen(false);
+    
+    toast({
+      title: "Success",
+      description: "Team created successfully",
+    });
+    
+    // Small delay before fetching to ensure database consistency
+    setTimeout(() => {
+      fetchTeams();
+    }, 500);
   } catch (error: any) {
     toast({
       title: "Error",
@@ -205,24 +285,43 @@ useEffect(()=>{
     try {
       setLoading(true);
 
-      const res = await fetch(`/api/teams`, {
+      // Build query parameters for filtering
+      const queryParams = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
+      });
+
+      if (filters.hackathonId && filters.hackathonId !== 'all') queryParams.append('hackathon', filters.hackathonId);
+      if (filters.mentorId && filters.mentorId !== 'all') queryParams.append('mentor', filters.mentorId);
+      if (filters.status !== 'all') queryParams.append('status', filters.status);
+
+      const res = await fetch(`/api/teams?${queryParams.toString()}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
 
       const data = await res.json();
+      console.log('Fetch teams response:', data);
 
-      if (res.ok && data.data) { 
-        setTeams(data.data);
-        // toast({
-        //   title: 'Success',
-        //   description: data.message || 'Teams fetched successfully',
-        // });
+      if (res.ok && data.success && data.data) { 
+        const filteredTeams = Array.isArray(data.data) ? data.data.filter((team: any) => team && team._id) : [];
+        console.log('Filtered teams:', filteredTeams);
+        console.log('First team:', filteredTeams[0]);
+        console.log('First team members:', filteredTeams[0]?.members);
+        console.log('First team members type:', typeof filteredTeams[0]?.members);
+        console.log('First team member example:', filteredTeams[0]?.members?.[0]);
+        
+        setTeams(filteredTeams);
+        setPagination(prev => ({
+          ...prev,
+          total: data.pagination?.total || 0,
+          pages: data.pagination?.pages || 1
+        }));
       } else {
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: data.message || 'Failed to fetch teams',
+          description: data.error || data.message || 'Failed to fetch teams',
         });
       }
     } catch (error: any) {
@@ -272,20 +371,27 @@ useEffect(()=>{
       const team = teams.find((t: any) => t._id === teamId)
       if (!team) return
 
-      const updatedMembers = [...(team.members?.map((m: any) => m._id) || []), memberId]
+      const updatedMembers = [...(team.members?.filter((m: any) => m && m._id).map((m: any) => m._id) || []), memberId]
 
-      const response = await updateTeam(teamId, { members: updatedMembers })
+      const response = await fetch(`/api/teams/${teamId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ members: updatedMembers })
+      });
 
-      if (response.success) {
+      const data = await response.json();
+
+      if (response.ok && data.success) {
         toast({
           title: "Member Added",
           description: "Team member has been successfully added.",
         })
         setIsAddMemberDialogOpen(false)
+        fetchTeams(); // Refresh teams list
       } else {
         toast({
           title: "Error",
-          description: response.error || "Failed to add member",
+          description: data.error || "Failed to add member",
           variant: "destructive",
         })
       }
@@ -303,19 +409,26 @@ useEffect(()=>{
       const team = teams.find((t: any) => t._id === teamId)
       if (!team) return
 
-      const updatedMembers = team.members?.filter((m: any) => m._id !== memberId).map((m: any) => m._id) || []
+      const updatedMembers = team.members?.filter((m: any) => m && m._id && m._id !== memberId).map((m: any) => m._id) || []
 
-      const response = await updateTeam(teamId, { members: updatedMembers })
+      const response = await fetch(`/api/teams/${teamId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ members: updatedMembers })
+      });
 
-      if (response.success) {
+      const data = await response.json();
+
+      if (response.ok && data.success) {
         toast({
           title: "Member Removed",
           description: "Team member has been successfully removed.",
         })
+        fetchTeams(); // Refresh teams list
       } else {
         toast({
           title: "Error",
-          description: response.error || "Failed to remove member",
+          description: data.error || "Failed to remove member",
           variant: "destructive",
         })
       }
@@ -330,9 +443,14 @@ useEffect(()=>{
 
   const handleDeleteTeam = async (id: string) => {
     try {
-      const response = await deleteTeam(id)
+      const response = await fetch(`/api/teams/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      });
 
-      if (response.success) {
+      const data = await response.json();
+
+      if (response.ok && data.success) {
         toast({
           title: "Team Deleted",
           description: "Team has been successfully deleted.",
@@ -341,7 +459,7 @@ useEffect(()=>{
       } else {
         toast({
           title: "Error",
-          description: response.error || "Failed to delete team",
+          description: data.error || "Failed to delete team",
           variant: "destructive",
         })
       }
@@ -354,13 +472,14 @@ useEffect(()=>{
     }
   }
 
-  const filteredTeams = teams.filter((team: any) => {
+  const filteredTeams = teams?.filter((team: any) => {
+    if (!team || !team._id) return false;
     const matchesSearch =
       (team.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
       (team.projectTitle?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
     const matchesStatus = statusFilter === "all" || team.status === statusFilter;
     return matchesSearch && matchesStatus;
-  })
+  }) || []
 
   if (teamsLoading) {
     return (
@@ -428,9 +547,9 @@ useEffect(()=>{
                         <SelectValue placeholder="Select hackathon" />
                       </SelectTrigger>
                       <SelectContent>
-                        {hackathons?.map((hackathon: any) => (
+                        {hackathons?.filter((hackathon: any) => hackathon && hackathon._id).map((hackathon: any) => (
                           <SelectItem key={hackathon._id} value={hackathon._id}>
-                            {hackathon.title}
+                            {hackathon.title || "Untitled Hackathon"}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -470,9 +589,9 @@ useEffect(()=>{
                         <SelectValue placeholder="Select team lead" />
                       </SelectTrigger>
                       <SelectContent>
-                        {students?.map((student: any) => (
+                        {students?.filter((student: any) => student && student._id).map((student: any) => (
                           <SelectItem key={student._id} value={student._id}>
-                            {student.name} - {student.email}
+                            {student.name || "Unknown"} - {student.email || "No email"}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -499,7 +618,7 @@ useEffect(()=>{
                   <Label>Additional Team Members</Label>
                   <div className="max-h-40 overflow-y-auto border rounded-md p-2">
                     {students
-                      .filter((student: any) => student._id !== newTeam.teamLead)
+                      ?.filter((student: any) => student && student._id && student._id !== newTeam.teamLead)
                       .map((student: any) => (
                         <div key={student._id} className="flex items-center space-x-2 py-1">
                           <Checkbox
@@ -539,9 +658,151 @@ useEffect(()=>{
           </Dialog>
         </div>
 
+        {/* Edit Team Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Team</DialogTitle>
+              <DialogDescription>Update team information and settings</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleUpdateTeam}>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="editTeamName">Team Name *</Label>
+                    <Input
+                      id="editTeamName"
+                      value={newTeam.name}
+                      onChange={(e) => setNewTeam({ ...newTeam, name: e.target.value })}
+                      placeholder="Enter team name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editHackathon">Hackathon *</Label>
+                    <Select
+                      value={newTeam.hackathon}
+                      onValueChange={(value) => setNewTeam({ ...newTeam, hackathon: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select hackathon" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {hackathons?.filter((hackathon: any) => hackathon && hackathon._id).map((hackathon: any) => (
+                          <SelectItem key={hackathon._id} value={hackathon._id}>
+                            {hackathon.title || "Untitled Hackathon"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="editProjectTitle">Project Title *</Label>
+                  <Input
+                    id="editProjectTitle"
+                    value={newTeam.projectTitle}
+                    onChange={(e) => setNewTeam({ ...newTeam, projectTitle: e.target.value })}
+                    placeholder="Enter project title"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="editProjectDescription">Project Description</Label>
+                  <Textarea
+                    id="editProjectDescription"
+                    value={newTeam.projectDescription}
+                    onChange={(e) => setNewTeam({ ...newTeam, projectDescription: e.target.value })}
+                    placeholder="Enter project description"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="editTeamLead">Team Lead *</Label>
+                    <Select
+                      value={newTeam.teamLead}
+                      onValueChange={(value) => setNewTeam({ ...newTeam, teamLead: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select team lead" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {students?.filter((student: any) => student && student._id).map((student: any) => (
+                          <SelectItem key={student._id} value={student._id}>
+                            {student.name || "Unknown"} - {student.email || "No email"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editRoom">Assigned Room</Label>
+                    <Select value={newTeam.room} onValueChange={(value) => setNewTeam({ ...newTeam, room: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select room" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Lab A-101">Lab A-101</SelectItem>
+                        <SelectItem value="Lab B-205">Lab B-205</SelectItem>
+                        <SelectItem value="Lab C-301">Lab C-301</SelectItem>
+                        <SelectItem value="Conference Room 1">Conference Room 1</SelectItem>
+                        <SelectItem value="Conference Room 2">Conference Room 2</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Team Members</Label>
+                  <div className="max-h-40 overflow-y-auto border rounded-md p-2">
+                    {students
+                      ?.filter((student: any) => student && student._id && student._id !== newTeam.teamLead)
+                      .map((student: any) => (
+                        <div key={student._id} className="flex items-center space-x-2 py-1">
+                          <Checkbox
+                            id={`edit-${student._id}`}
+                            checked={newTeam.members.includes(student._id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setNewTeam({
+                                  ...newTeam,
+                                  members: [...newTeam.members, student._id],
+                                })
+                              } else {
+                                setNewTeam({
+                                  ...newTeam,
+                                  members: newTeam.members.filter((id) => id !== student._id),
+                                })
+                              }
+                            }}
+                          />
+                          <Label htmlFor={`edit-${student._id}`} className="text-sm">
+                            {student.name} - {student.email}
+                          </Label>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" type="button" onClick={() => setIsEditDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Update Team
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
         {/* Filters */}
-        <div className="flex gap-4 items-center">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex gap-4 items-center flex-wrap">
+          <div className="relative flex-1 min-w-64">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
               placeholder="Search teams..."
@@ -550,7 +811,36 @@ useEffect(()=>{
               className="pl-10"
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          
+          <Select value={filters.hackathonId} onValueChange={(value) => handleFilterChange({ hackathonId: value })}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="All Hackathons" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Hackathons</SelectItem>
+              {hackathons?.filter((h: any) => h && h._id).map((hackathon: any) => (
+                <SelectItem key={hackathon._id} value={hackathon._id}>
+                  {hackathon.title || "Untitled"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filters.mentorId} onValueChange={(value) => handleFilterChange({ mentorId: value })}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="All Mentors" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Mentors</SelectItem>
+              {mentors?.filter((m: any) => m && m._id).map((mentor: any) => (
+                <SelectItem key={mentor._id} value={mentor._id}>
+                  {mentor.name || mentor.username || "Unknown Mentor"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filters.status} onValueChange={(value) => handleFilterChange({ status: value })}>
             <SelectTrigger className="w-40">
               <Filter className="mr-2 h-4 w-4" />
               <SelectValue />
@@ -587,10 +877,15 @@ useEffect(()=>{
                           {team.submissionStatus}
                         </Badge>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => setSelectedTeam(team)}>
+                          <Button variant="ghost" size="sm" onClick={() => {
+                            console.log('Selected team for viewing:', team);
+                            console.log('Team members:', team.members);
+                            console.log('Team members length:', team.members?.length);
+                            setSelectedTeam(team);
+                          }}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" >
+                          <Button variant="ghost" size="sm" onClick={() => handleEditTeam(team)}>
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => handleDeleteTeam(team._id)}>
@@ -607,7 +902,7 @@ useEffect(()=>{
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-medium flex items-center gap-2">
                             <Users className="h-4 w-4" />
-                            Team Members ({team.members?.length || 0})
+                            Team Members ({team.members?.filter((m: any) => m && m._id).length || 0})
                           </h4>
                           <Button
                             variant="outline"
@@ -621,40 +916,47 @@ useEffect(()=>{
                             Add Member
                           </Button>
                         </div>
-                        {/* <div className="flex flex-wrap gap-2">
-                          {team.members?.map((member: any) => (
-                            member && (
-                              <div key={member._id} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2 group">
-                                <Avatar className="h-6 w-6">
-                                  <AvatarImage src={member.avatar || "/placeholder.svg"} />
-                                  <AvatarFallback>
-                                    {member.name
-                                      ?.split(" ")
-                                      .map((n: string) => n[0])
-                                      .join("")}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-1">
-                                    <p className="text-xs font-medium">{member.name}</p>
-                                    {member._id === team.teamLead?._id && <Crown className="h-3 w-3 text-yellow-500" />}
-                                  </div>
-                                  <p className="text-xs text-gray-500">{member.role}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {team.members?.filter((member: any) => member && member._id).map((member: any) => (
+                            <div key={member._id} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2 group min-w-0">
+                              <Avatar className="h-8 w-8 flex-shrink-0">
+                                <AvatarImage src={member.image || member.avatar || "/placeholder.svg"} />
+                                <AvatarFallback>
+                                  {(member.name || member.username || "?")
+                                    .split(" ")
+                                    .map((n: string) => n[0])
+                                    .join("")
+                                    .toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1">
+                                  <p className="text-xs font-medium truncate">
+                                    {member.name || member.username || "Unknown"}
+                                  </p>
+                                  {member._id === team.teamLead?._id && <Crown className="h-3 w-3 text-yellow-500 flex-shrink-0" />}
                                 </div>
-                                {member._id !== team.teamLead?._id && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
-                                    onClick={() => handleRemoveMember(team._id, member._id)}
-                                  >
-                                    <UserMinus className="h-3 w-3" />
-                                  </Button>
+                                <p className="text-xs text-gray-500 truncate">{member.email || "No email"}</p>
+                                <p className="text-xs text-blue-600 capitalize">{member.role || "Member"}</p>
+                                {member.skills && member.skills.length > 0 && (
+                                  <p className="text-xs text-gray-400 truncate">
+                                    {Array.isArray(member.skills) ? member.skills.slice(0, 2).join(", ") : member.skills}
+                                  </p>
                                 )}
                               </div>
-                            )
+                              {member._id !== team.teamLead?._id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0 flex-shrink-0"
+                                  onClick={() => handleRemoveMember(team._id, member._id)}
+                                >
+                                  <UserMinus className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
                           ))}
-                        </div> */}
+                        </div>
                       </div>
 
                       {/* Progress */}
@@ -722,24 +1024,24 @@ useEffect(()=>{
                           </td>
                           <td className="p-4">{team.hackathon?.title}</td>
                           <td className="p-4">
-                            {/* <div className="flex -space-x-2">
-                              {team.members?.slice(0, 3).map((member: any) => (
+                            <div className="flex -space-x-2">
+                              {team.members?.filter((member: any) => member && member._id).slice(0, 3).map((member: any) => (
                                 <Avatar key={member._id} className="h-6 w-6 border-2 border-white">
                                   <AvatarImage src={member.avatar || "/placeholder.svg"} />
                                   <AvatarFallback className="text-xs">
                                     {member.name
                                       ?.split(" ")
                                       .map((n: string) => n[0])
-                                      .join("")}
+                                      .join("") || "?"}
                                   </AvatarFallback>
                                 </Avatar>
                               ))}
-                              {team.members?.length > 3 && (
+                              {(team.members?.filter((member: any) => member && member._id).length || 0) > 3 && (
                                 <div className="h-6 w-6 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs">
-                                  +{team.members.length - 3}
+                                  +{(team.members?.filter((member: any) => member && member._id).length || 0) - 3}
                                 </div>
                               )}
-                            </div> */}
+                            </div>
                           </td>
                           <td className="p-4">
                             <div className="flex items-center gap-2">
@@ -755,7 +1057,7 @@ useEffect(()=>{
                               <Button variant="ghost" size="sm" onClick={() => setSelectedTeam(team)}>
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="sm">
+                              <Button variant="ghost" size="sm" onClick={() => handleEditTeam(team)}>
                                 <Edit className="h-4 w-4" />
                               </Button>
                               <Button variant="ghost" size="sm" onClick={() => handleDeleteTeam(team._id)}>
@@ -781,6 +1083,31 @@ useEffect(()=>{
           </Card>
         )}
 
+        {/* Pagination */}
+        {pagination.pages > 1 && (
+          <div className="flex justify-center gap-2 items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pagination.page <= 1}
+              onClick={() => handlePageChange(pagination.page - 1)}
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-gray-600">
+              Page {pagination.page} of {pagination.pages} ({pagination.total} teams)
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pagination.page >= pagination.pages}
+              onClick={() => handlePageChange(pagination.page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        )}
+
         {/* Add Member Dialog */}
         <Dialog open={isAddMemberDialogOpen} onOpenChange={setIsAddMemberDialogOpen}>
           <DialogContent>
@@ -791,7 +1118,7 @@ useEffect(()=>{
             <div className="space-y-4">
               {students
                 .filter(
-                  (student: any) => !selectedTeamForMembers?.members?.some((member: any) => member._id === student._id),
+                  (student: any) => student && student._id && !selectedTeamForMembers?.members?.some((member: any) => member && member._id === student._id),
                 )
                 .map((student: any) => (
                   <div key={student._id} className="flex items-center justify-between p-3 border rounded-lg">
@@ -866,31 +1193,66 @@ useEffect(()=>{
                 </div>
 
                 <div>
-                  <h4 className="font-medium mb-3">Team Members</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    {selectedTeam.members?.map((member: any) => (
-                      <div key={member?._id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={member?.avatar || "/placeholder.svg"} />
-                            <AvatarFallback>
-                              {member?.name
-                                ?.split(" ")
-                                .map((n: string) => n[0])
-                                .join("")}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="flex items-center gap-1">
-                              <p className="font-medium">{member?.name}</p>
-                              {member?._id === selectedTeam.teamLead?._id && (
-                                <Crown className="h-4 w-4 text-yellow-500" />
-                              )}
-                            </div>
-                            <p className="text-sm text-gray-600">{member?.role}</p>
+                  <h4 className="font-medium mb-3">Team Members ({selectedTeam.members?.filter((m: any) => m && m._id).length || 0})</h4>
+                  <div className="grid gap-3">
+                    {selectedTeam.members?.filter((member: any) => member && member._id).map((member: any) => (
+                      <div key={member._id} className="flex items-start gap-4 p-4 border rounded-lg hover:bg-gray-50">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={member.image || member.avatar || "/placeholder.svg"} />
+                          <AvatarFallback>
+                            {(member.name || member.username || "?")
+                              .split(" ")
+                              .map((n: string) => n[0])
+                              .join("")
+                              .toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-lg">{member.name || member.username || "Unknown"}</p>
+                            {member._id === selectedTeam.teamLead?._id && (
+                              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                <Crown className="h-3 w-3 mr-1" />
+                                Team Lead
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Email:</span> {member.email || "Not provided"}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Role:</span> {member.role || "Member"}
+                            </p>
+                            {member.skills && member.skills.length > 0 && (
+                              <div className="text-sm text-gray-600">
+                                <span className="font-medium">Skills:</span>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {(Array.isArray(member.skills) ? member.skills : [member.skills]).slice(0, 5).map((skill: string, index: number) => (
+                                    <Badge key={index} variant="outline" className="text-xs">
+                                      {skill}
+                                    </Badge>
+                                  ))}
+                                  {Array.isArray(member.skills) && member.skills.length > 5 && (
+                                    <Badge variant="outline" className="text-xs">
+                                      +{member.skills.length - 5} more
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <p className="text-sm text-gray-600">{member?.email}</p>
+                        {member._id !== selectedTeam.teamLead?._id && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRemoveMember(selectedTeam._id, member._id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     ))}
                   </div>

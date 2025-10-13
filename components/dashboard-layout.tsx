@@ -55,22 +55,26 @@ const roleMenuItems = {
   ],
   faculty: [
     { icon: Home, label: "Dashboard", href: "/dashboard/faculty" },
+    { icon: BarChart3, label: "Registration Monitor", href: "/dashboard/faculty/registration-monitor" },
+    { icon: Users, label: "Student Analytics", href: "/dashboard/faculty/student-analytics" },
     { icon: Users, label: "Students", href: "/dashboard/faculty/students" },
     { icon: Calendar, label: "Hackathons", href: "/dashboard/faculty/hackathons" },
     { icon: CreditCard, label: "Payments", href: "/dashboard/faculty/payments" },
   ],
   student: [
     { icon: Home, label: "Dashboard", href: "/dashboard/student" },
+    { icon: BarChart3, label: "Progress Tracker", href: "/dashboard/student/progress" },
     { icon: Calendar, label: "Hackathons", href: "/dashboard/student/hackathons" },
     { icon: CreditCard, label: "Payments", href: "/dashboard/student/payments" },
     { icon: FileText, label: "Certificates", href: "/dashboard/student/certificates" },
   ],
   mentor: [
     { icon: Home, label: "Dashboard", href: "/dashboard/mentor" },
+    { icon: Users, label: "Team Guidance", href: "/dashboard/mentor/team-guidance" },
+    { icon: FileText, label: "Mentoring History", href: "/dashboard/mentor/mentoring-history" },
     { icon: Users, label: "My Teams", href: "/dashboard/mentor/teams" },
     { icon: Calendar, label: "Hackathons", href: "/dashboard/mentor/hackathons" },
     { icon: BarChart3, label: "Progress", href: "/dashboard/mentor/progress" },
-    { icon: FileText, label: "History", href: "/dashboard/mentor/history" },
   ],
 }
 
