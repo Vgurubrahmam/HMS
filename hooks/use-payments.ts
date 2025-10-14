@@ -128,7 +128,10 @@ export function usePayments(params?: UsePaymentsParams): UsePaymentsResult {
   );
 
   useEffect(() => {
-    fetchPayments();
+    // Only fetch if we have a user ID (for student role) or no user filter (for coordinator/admin)
+    if (params?.user === undefined || params?.user) {
+      fetchPayments();
+    }
   }, [paramsKey]);
 
   const createPayment = async (data: CreatePaymentData): Promise<ApiResponse> => {

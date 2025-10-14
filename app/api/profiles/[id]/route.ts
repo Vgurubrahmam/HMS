@@ -10,8 +10,9 @@ export async function GET(
     await db()
     const profile = await Profile.findOne({ userId: params.id })
 
+    // Return null data if profile doesn't exist instead of 404 error
     if (!profile) {
-      return NextResponse.json({ message: "Profile not found" }, { status: 404 })
+      return NextResponse.json({ data: null })
     }
 
     return NextResponse.json({ data: profile })

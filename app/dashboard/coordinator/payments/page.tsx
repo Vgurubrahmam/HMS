@@ -80,7 +80,7 @@ export default function coordinatorPaymentPage(){
     .filter((payment: any) => payment.status === "Failed")
     .reduce((sum: number, payment: any) => sum + payment.amount, 0)
 
-  const handleStatusUpdate = async (paymentId: string, newStatus: string) => {
+  const handleStatusUpdate = async (paymentId: string, newStatus: "Pending" | "Completed" | "Failed" | "Refunded") => {
     try {
       const result = await updatePayment(paymentId, { status: newStatus })
       if (result.success) {

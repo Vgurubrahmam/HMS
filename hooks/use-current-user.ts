@@ -26,11 +26,19 @@ export function useCurrentUser() {
 
         const decoded: any = jwtDecode(token);
         if (decoded) {
+          // Handle different JWT formats that might be used
+          const userId = decoded.id || decoded.userId || decoded.user?.id || decoded._id || "";
+          const username = decoded.username || decoded.name || decoded.user?.username || "";
+          const email = decoded.email || decoded.user?.email || "";
+          const role = decoded.role || decoded.user?.role || "";
+          
+          
+          
           const user: UserData = {
-            id: decoded.id || decoded.userId || "",
-            username: decoded.username || "",
-            email: decoded.email || "",
-            role: decoded.role || "",
+            id: userId,
+            username: username,
+            email: email,
+            role: role,
           };
           setUserData(user);
         } else {

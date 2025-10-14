@@ -4,6 +4,7 @@ import Registration from '@/lib/models/Registration';
 import User from '@/lib/models/User';
 import Hackathon from '@/lib/models/Hackathon';
 import Payment from '@/lib/models/Payment';
+import { refreshHackathonParticipantCount } from '@/lib/participant-utils';
 
 
 
@@ -83,6 +84,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<JsonResponse>
     // Update registration with payment reference
     newRegistration.payment = newPayment._id
     await newRegistration.save()
+
+    // Update hackathon participant count using utility function
+    await refreshHackathonParticipantCount(hackathon)
 
     console.log("Hackathon registration and payment created successfully")
 

@@ -37,8 +37,6 @@ export default function StudentHackathonsPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [difficultyFilter, setDifficultyFilter] = useState("all")
   const [favorites, setFavorites] = useState<string[]>([])
-  const [Hackathons, setHackathons] = useState([])
-  const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
   const {
@@ -51,43 +49,14 @@ export default function StudentHackathonsPage() {
     difficulty: difficultyFilter !== "all" ? difficultyFilter : undefined,
   })
 
-// get all hackathons
- useEffect(() => {
-    const fetchHackathons = async () => {
-      try {
-        const res = await fetch("/api/hackathons", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" }
-        })
-        const data = await res.json()
+  // Auto-refresh hackathons every 30 seconds to ensure fresh data
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch()
+    }, 30000) // 30 seconds
 
-        if (res.ok) {
-          setHackathons(data.data)
-          // toast({
-          //   title: "Success",
-          //   description: "Hackathons fetched successfully",
-          // })
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: data.message || "Error fetching hackathons"
-          })
-        }
-
-      } catch (error: any) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: error.message || "Something went wrong while fetching hackathons"
-
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchHackathons()
-  }, [])
+    return () => clearInterval(interval)
+  }, [refetch])
 
 
   const {
@@ -106,7 +75,7 @@ export default function StudentHackathonsPage() {
     user: currentUserId,
   })
 
-  const totalLoading = loading || hackathonsLoading || registrationsLoading || paymentsLoading || userLoading
+  const totalLoading = userLoading || hackathonsLoading || registrationsLoading || paymentsLoading
 
   // Get user's registered hackathons with proper status
   const myRegistrations = registrations.map((r: any) => {
@@ -236,7 +205,7 @@ export default function StudentHackathonsPage() {
     }
   }
 
-  const myHackathons = Hackathons.filter((h: any) => myHackathonIds.includes(h._id))
+  const myHackathons = hackathons.filter((h: any) => myHackathonIds.includes(h._id))
   const favoriteHackathons = hackathons.filter((h: any) => favorites.includes(h._id))
 
   if (totalLoading) {
@@ -263,7 +232,7 @@ export default function StudentHackathonsPage() {
 
         <Tabs defaultValue="browse" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="browse">Browse All ({Hackathons.length})</TabsTrigger>
+            <TabsTrigger value="browse">Browse All ({hackathons.length})</TabsTrigger>
             <TabsTrigger value="registered">My Hackathons ({myHackathons.length})</TabsTrigger>
             <TabsTrigger value="favorites">Favorites ({favoriteHackathons.length})</TabsTrigger>
           </TabsList>
@@ -318,7 +287,7 @@ export default function StudentHackathonsPage() {
 
             {/* Hackathons Grid */}
             <div className="grid gap-6">
-              {Hackathons.map((hackathon: any) => {
+              {hackathons.map((hackathon: any) => {
                 const registrationStatus = getRegistrationStatus(hackathon._id)
                 const isRegistered = registrationStatus === "Registered"
                 const isPending = registrationStatus === "Pending"
@@ -427,7 +396,7 @@ export default function StudentHackathonsPage() {
               })}
             </div>
 
-            {Hackathons.length === 0 && (
+            {hackathons.length === 0 && (
               <Card>
                 <CardContent className="text-center py-8">
                   <p className="text-gray-600">No hackathons found matching your criteria.</p>
@@ -450,7 +419,6 @@ export default function StudentHackathonsPage() {
                           <CardDescription>{hackathon.description}</CardDescription>
                           <div className="flex items-center gap-2 mt-2">
                             <Badge className={getStatusColor(hackathon.status)}>{hackathon.status}</Badge>
-                            <Badge variant="outline" className="bg-green-100 text-green-800">Registered</Badge>
                             {registration && (
                               <Badge variant={registration.status === "Registered" ? "default" : "secondary"}>
                                 {registration.status}
@@ -649,7 +617,7 @@ export default function StudentHackathonsPage() {
                       <CardContent className="space-y-2">
                         <div className="flex justify-between">
                           <span className="text-gray-600">Registration Fee:</span>
-                          <span className="font-medium">${selectedHackathon.registrationFee}</span>
+                          <span className="font-medium">{selectedHackathon.registrationFee}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Participants:</span>

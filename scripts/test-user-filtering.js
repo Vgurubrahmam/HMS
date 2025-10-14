@@ -49,7 +49,6 @@ async function testUserFiltering() {
       console.log(`Registrations for user ${userId}: ${userRegistrations.length}`);
     }
     
-    console.log("\n✅ User filtering test completed");
     
   } catch (error) {
     console.error("Error testing user filtering:", error);

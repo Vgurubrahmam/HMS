@@ -5,24 +5,36 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, Trophy, Users, BookOpen, Plus, Eye, Award, TrendingUp, Loader2 } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Calendar, Trophy, Users, BookOpen, Plus, Eye, Award, TrendingUp, Loader2, Clock, AlertCircle, Bell } from "lucide-react"
 import { useHackathons } from "@/hooks/use-hackathons"
 import { useRegistrations } from "@/hooks/use-registrations"
 import { useCertificates } from "@/hooks/use-certificates"
 import { useTeams } from "@/hooks/use-teams"
 import { useCurrentUser } from "@/hooks/use-current-user"
+import { 
+  useHackathonStatuses, 
+  useRegistrationStatuses, 
+  useLiveDashboardStats,
+  useDeadlineAlerts 
+} from "@/hooks/use-live-status"
+import { getStatusBadgeColor, getStatusIcon } from "@/lib/status-utils"
+import { BackgroundStatusUpdater, useStatusUpdater } from "@/components/background-status-updater"
+import { StatusDebugWidget } from "@/components/status-debug-widget"
 import Link from "next/link"
+import { useState, useEffect } from "react"
 
 export default function StudentDashboard() {
   const { userData, loading: userLoading } = useCurrentUser()
   const currentUserId = userData?.id
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const { updateStatuses } = useStatusUpdater()
 
-  const { hackathons, loading: hackathonsLoading } = useHackathons({
-    status: "Registration Open",
-    limit: 5,
+  const { hackathons, loading: hackathonsLoading, refetch: refetchHackathons } = useHackathons({
+    limit: 20, // Get more hackathons to show different statuses
   })
 
-  const { registrations, loading: registrationsLoading } = useRegistrations({
+  const { registrations, loading: registrationsLoading, refetch: refetchRegistrations } = useRegistrations({
     user: currentUserId,
     limit: 10,
   })
@@ -36,26 +48,92 @@ export default function StudentDashboard() {
 
   const loading = hackathonsLoading || registrationsLoading || certificatesLoading || teamsLoading || userLoading
 
-  // Calculate statistics from real data
+  // Use real-time status hooks
+  const hackathonStatuses = useHackathonStatuses(hackathons)
+  const registrationStatuses = useRegistrationStatuses(registrations, hackathons)
+  const liveStats = useLiveDashboardStats(hackathons, registrations, teams, certificates, currentUserId || "")
+  const deadlineAlerts = useDeadlineAlerts(hackathons, registrations.filter((r: any) => r.user?._id === currentUserId))
+
+  // Filter data with live status information
   const myRegistrations = registrations.filter((r: any) => r.user?._id === currentUserId)
   const myTeams = teams.filter(
     (t: any) => t.members?.some((m: any) => m._id === currentUserId) || t.teamLead?._id === currentUserId,
   )
   const myCertificates = certificates.filter((c: any) => c.user?._id === currentUserId)
-  const upcomingHackathons = hackathons.filter(
-    (h: any) => new Date(h.startDate) > new Date() && h.status === "Registration Open",
+  
+  // Get hackathons with live statuses
+  const openHackathons = hackathonStatuses.filter(hs => hs.status.canRegister)
+  const upcomingHackathons = hackathonStatuses.filter(hs => 
+    hs.status.phase === "registration" || hs.status.phase === "preparation"
   )
+  const activeHackathons = hackathonStatuses.filter(hs => hs.status.isActive)
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Registration Open":
-        return "bg-green-100 text-green-800"
-      case "Active":
-        return "bg-blue-100 text-blue-800"
-      case "Completed":
-        return "bg-gray-100 text-gray-800"
-      default:
-        return "bg-gray-100 text-gray-800"
+  // Auto-refresh data every 60 seconds to keep participant counts up-to-date
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (currentUserId) {
+        refetchHackathons()
+        refetchRegistrations()
+      }
+    }, 60000) // 60 seconds
+
+    return () => clearInterval(interval)
+  }, [currentUserId, refetchHackathons, refetchRegistrations])
+
+  // Helper function to get registration status display
+  const getRegistrationDisplayInfo = (registration: any) => {
+    const regStatus = registrationStatuses.find(rs => rs.registration._id === registration._id)
+    return {
+      status: regStatus?.status.status || "Registered",
+      canPay: regStatus?.status.canPay || false,
+      priority: regStatus?.status.priority || "low",
+      isActive: regStatus?.status.isActive || false,
+    }
+  }
+
+  // Manual status update function
+  const handleManualStatusUpdate = async () => {
+    setIsUpdatingStatus(true)
+    try {
+      const result = await updateStatuses()
+      
+      if (result.success && result.updated > 0) {
+        // Refresh hackathons to get updated participant counts
+        await refetchHackathons()
+        await refetchRegistrations()
+      }
+    } catch (error) {
+    } finally {
+      setIsUpdatingStatus(false)
+    }
+  }
+
+  // Force refresh function for debugging
+  const handleForceRefresh = async () => {
+    setIsUpdatingStatus(true)
+    try {
+      // First refresh participant counts
+      const participantResponse = await fetch('/api/hackathons/refresh-participants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const participantResult = await participantResponse.json()
+      
+      // Then force refresh status
+      const response = await fetch('/api/hackathons/force-refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const result = await response.json()
+      
+      // Refresh data instead of reloading page
+      if (participantResult.success || result.success) {
+        await refetchHackathons()
+        await refetchRegistrations()
+      }
+    } catch (error) {
+    } finally {
+      setIsUpdatingStatus(false)
     }
   }
 
@@ -85,14 +163,56 @@ export default function StudentDashboard() {
 
   return (
     <DashboardLayout userRole="student">
+      {/* Background status updater - runs automatically */}
+      <BackgroundStatusUpdater
+        updateInterval={5 * 60 * 1000} // Update every 5 minutes
+        enabled={true}
+        onUpdate={(result) => {
+          if (result.updated > 0) {
+          }
+        }}
+      />
+      
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-4xl font-semibold ">Student Dashboard</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-4xl font-semibold">Student Dashboard</h1>
+              
+            </div>
             <p className="text-gray-500">Track your hackathon journey and achievements</p>
+            
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManualStatusUpdate}
+              disabled={isUpdatingStatus}
+              className="text-xs"
+            >
+              {isUpdatingStatus ? (
+                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+              ) : (
+                <Clock className="mr-2 h-3 w-3" />
+              )}
+              {isUpdatingStatus ? 'Updating...' : 'Refresh Status'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleForceRefresh}
+              disabled={isUpdatingStatus}
+              className="text-xs bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+            >
+              {isUpdatingStatus ? (
+                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+              ) : (
+                <AlertCircle className="mr-2 h-3 w-3" />
+              )}
+              Force Fix Status
+            </Button>
             <Link href="/dashboard/student/hackathons">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
@@ -102,6 +222,30 @@ export default function StudentDashboard() {
           </div>
         </div>
 
+        {/* Deadline Alerts */}
+        {deadlineAlerts.length > 0 && (
+          <div className="space-y-2">
+            {deadlineAlerts.slice(0, 3).map((alert, index) => (
+              <Alert key={index} className={`border-l-4 ${
+                alert.priority === 'high' ? 'border-l-red-500 bg-red-50' : 
+                alert.priority === 'medium' ? 'border-l-yellow-500 bg-yellow-50' : 
+                'border-l-blue-500 bg-blue-50'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {alert.priority === 'high' ? (
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                  ) : (
+                    <Bell className="h-4 w-4 text-blue-600" />
+                  )}
+                  <AlertDescription className="font-medium">
+                    {alert.message}
+                  </AlertDescription>
+                </div>
+              </Alert>
+            ))}
+          </div>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card>
@@ -110,11 +254,16 @@ export default function StudentDashboard() {
               <Calendar className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{myRegistrations.length}</div>
+              <div className="text-2xl font-bold">{liveStats.totalRegistrations}</div>
               <p className="text-xs text-gray-600 mt-1">
                 <span className="text-green-600">
-                  {myRegistrations.filter((r: any) => r.paymentStatus === "Paid").length} confirmed
+                  {liveStats.confirmedRegistrations} confirmed
                 </span>
+                {liveStats.pendingPayments > 0 && (
+                  <span className="text-red-600 ml-2">
+                    • {liveStats.pendingPayments} pending payment
+                  </span>
+                )}
               </p>
             </CardContent>
           </Card>
@@ -125,9 +274,9 @@ export default function StudentDashboard() {
               <Users className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{myTeams.length}</div>
+              <div className="text-2xl font-bold">{liveStats.totalTeams}</div>
               <p className="text-xs text-gray-600 mt-1">
-                <span className="text-blue-600">{myTeams.filter((t: any) => t.status === "Active").length} active</span>
+                <span className="text-blue-600">{liveStats.activeTeams} active</span>
               </p>
             </CardContent>
           </Card>
@@ -138,10 +287,10 @@ export default function StudentDashboard() {
               <Trophy className="h-4 w-4 text-yellow-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{myCertificates.length}</div>
+              <div className="text-2xl font-bold">{liveStats.totalCertificates}</div>
               <p className="text-xs text-gray-600 mt-1">
                 <span className="text-yellow-600">
-                  {myCertificates.filter((c: any) => c.type === "Winner").length} winner certificates
+                  {liveStats.winnerCertificates} winner certificates
                 </span>
               </p>
             </CardContent>
@@ -153,18 +302,26 @@ export default function StudentDashboard() {
               <BookOpen className="h-4 w-4 text-purple-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{upcomingHackathons.length}</div>
-              <p className="text-xs text-gray-600 mt-1">Open for registration</p>
+              <div className="text-2xl font-bold">{liveStats.openHackathons}</div>
+              <p className="text-xs text-gray-600 mt-1">
+                Open for registration
+                {liveStats.upcomingEvents > 0 && (
+                  <span className="text-blue-600 ml-2">
+                    • {liveStats.upcomingEvents} upcoming
+                  </span>
+                )}
+              </p>
             </CardContent>
           </Card>
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="hackathons">My Hackathons</TabsTrigger>
             <TabsTrigger value="teams">My Teams</TabsTrigger>
             <TabsTrigger value="achievements">Achievements</TabsTrigger>
+            <TabsTrigger value="debug" className="text-red-600">Debug Status</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -182,25 +339,41 @@ export default function StudentDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {upcomingHackathons.slice(0, 3).map((hackathon: any) => (
-                      <div key={hackathon._id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <h4 className="font-medium">{hackathon.title}</h4>
-                          <p className="text-sm text-gray-600">
-                            📅 {new Date(hackathon.startDate).toLocaleDateString()}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            💰 ${hackathon.registrationFee} • 📍 {hackathon.venue}
-                          </p>
+                    {upcomingHackathons.slice(0, 3).map((hackathonStatus) => {
+                      const hackathon = hackathonStatus.hackathon
+                      const status = hackathonStatus.status
+                      return (
+                        <div key={hackathon._id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <h4 className="font-medium">{hackathon.title}</h4>
+                            <p className="text-sm text-gray-600">
+                              📅 {new Date(hackathon.startDate).toLocaleDateString()}
+                              {status.timeRemaining && (
+                                <span className="ml-2 text-blue-600">
+                                  • {status.timeRemaining} to go
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              💰 ${hackathon.registrationFee} • 📍 {hackathon.venue}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm">{getStatusIcon(status.status)}</span>
+                              <Badge className={getStatusBadgeColor(status.status)}>{status.status}</Badge>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              {hackathon.currentParticipants}/{hackathon.maxParticipants} registered
+                            </p>
+                            
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <Badge className={getStatusColor(hackathon.status)}>{hackathon.status}</Badge>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {hackathon.currentParticipants}/{hackathon.maxParticipants} registered
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
+                    {upcomingHackathons.length === 0 && (
+                      <p className="text-gray-500 text-center py-4">No upcoming hackathons</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -281,32 +454,61 @@ export default function StudentDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {myRegistrations.map((registration: any) => (
-                    <div key={registration._id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <h4 className="font-medium">{registration.hackathon?.title}</h4>
-                        <p className="text-sm text-gray-600 mt-1">
-                          📅 {new Date(registration.hackathon?.startDate).toLocaleDateString()} -{" "}
-                          {new Date(registration.hackathon?.endDate).toLocaleDateString()}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          💰 ${registration.paymentAmount} • Registered:{" "}
-                          {new Date(registration.registrationDate).toLocaleDateString()}
-                        </p>
+                  {myRegistrations.map((registration: any) => {
+                    const displayInfo = getRegistrationDisplayInfo(registration)
+                    const hackathonStatus = hackathonStatuses.find(hs => 
+                      hs.hackathon._id === registration.hackathon?._id
+                    )
+                    
+                    return (
+                      <div key={registration._id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-medium">{registration.hackathon?.title}</h4>
+                            {displayInfo.priority === 'high' && (
+                              <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">
+                                Action Required
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">
+                            📅 {new Date(registration.hackathon?.startDate).toLocaleDateString()} -{" "}
+                            {new Date(registration.hackathon?.endDate).toLocaleDateString()}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            💰 {registration.paymentAmount || registration.hackathon?.registrationFee} • Registered:{" "}
+                            {new Date(registration.registrationDate).toLocaleDateString()}
+                          </p>
+                          {hackathonStatus && (
+                            <p className="text-sm text-blue-600 mt-1">
+                              {getStatusIcon(hackathonStatus.status.status)} Event Status: {hackathonStatus.status.status}
+                              {hackathonStatus.status.timeRemaining && ` • ${hackathonStatus.status.timeRemaining}`}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <div className="flex items-center gap-1 mb-1">
+                              <span className="text-sm">{getStatusIcon(displayInfo.status)}</span>
+                              <Badge className={getStatusBadgeColor(displayInfo.status)}>
+                                {displayInfo.status}
+                              </Badge>
+                            </div>
+                            <Badge variant={registration.paymentStatus === "Completed" ? "default" : "secondary"}>
+                              Payment: {registration.paymentStatus}
+                            </Badge>
+                          </div>
+                          {displayInfo.canPay && (
+                            <Link href="/dashboard/student/payments">
+                              <Button size="sm" className="bg-red-600 hover:bg-red-700">
+                                Pay Now
+                              </Button>
+                            </Link>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={registration.paymentStatus === "Paid" ? "default" : "secondary"}>
-                          {registration.paymentStatus}
-                        </Badge>
-                        <Badge variant="outline">{registration.status}</Badge>
-                        {registration.paymentStatus === "Pending" && (
-                          <Link href="/dashboard/student/payments">
-                            <Button size="sm">Pay Now</Button>
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                   {myRegistrations.length === 0 && (
                     <div className="text-center py-8 text-gray-500">
                       <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
@@ -509,6 +711,11 @@ export default function StudentDashboard() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* Debug Panel - Remove in production */}
+          <TabsContent value="debug" className="space-y-6">
+            <StatusDebugWidget />
           </TabsContent>
         </Tabs>
       </div>

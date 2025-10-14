@@ -85,23 +85,17 @@ async function testMultipleNullTransactionIds() {
         
         const savedPayment = await payment.save();
         payments.push(savedPayment);
-        console.log(`✅ Created payment ${i + 1} with ID: ${savedPayment._id}`);
       } catch (error) {
-        console.log(`❌ Failed to create payment ${i + 1}: ${error.message}`);
       }
     }
     
     console.log(`\nSuccessfully created ${payments.length} payments with null transactionId`);
     
     // Clean up test payments
-    console.log("\nCleaning up test payments...");
     for (const payment of payments) {
       await Payment.findByIdAndDelete(payment._id);
-      console.log(`Deleted test payment: ${payment._id}`);
     }
     
-    console.log("\n🎉 Test completed successfully!");
-    console.log("Multiple payments with null transactionId can now be created.");
     
   } catch (error) {
     console.error("Error testing multiple null transactionIds:", error);

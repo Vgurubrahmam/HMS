@@ -30,11 +30,11 @@ async function checkPaymentIndexes() {
       console.log(`- Sparse: ${transactionIdIndex.sparse || false}`);
       
       if (!transactionIdIndex.sparse) {
-        console.log("❌ PROBLEM: Unique index on transactionId is NOT sparse!");
+        console.log("PROBLEM: Unique index on transactionId is NOT sparse!");
         console.log("This means multiple null values are not allowed.");
         console.log("The index should be sparse to allow multiple null values.");
       } else {
-        console.log("✅ Index is sparse - should allow multiple null values");
+        console.log(" Index is sparse - should allow multiple null values");
       }
     } else {
       console.log("\nNo unique index found on transactionId");

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
 import Hackathon from "@/lib/models/Hackathon";
+import Registration from "@/lib/models/Registration";
 
 interface HackathonData {
   _id: string;
@@ -95,10 +96,29 @@ export async function GET(req: Request): Promise<Response> {
 
     // Fetch data with pagination and sorting
     const total = await Hackathon.countDocuments(query);
-    const data: HackathonData[] = await Hackathon.find(query)
+    const hackathons = await Hackathon.find(query)
       .sort({ startDate: -1 }) // Sort by startDate descending (most recent first)
       .skip((page - 1) * limit)
       .limit(limit);
+
+    // Dynamically calculate current participants for each hackathon
+    const data: HackathonData[] = await Promise.all(
+      hackathons.map(async (hackathon) => {
+        // Count confirmed registrations (either Completed payment or Registered status)
+        const confirmedRegistrations = await Registration.countDocuments({
+          hackathon: hackathon._id,
+          $or: [
+            { paymentStatus: "Completed" },
+            { paymentStatus: "Registered" }
+          ]
+        });
+
+        return {
+          ...hackathon.toObject(),
+          currentParticipants: confirmedRegistrations
+        };
+      })
+    );
 
     return NextResponse.json(
       {

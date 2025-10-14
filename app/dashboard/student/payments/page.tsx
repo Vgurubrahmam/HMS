@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -21,18 +21,31 @@ export default function StudentPaymentsPage() {
   const { userData, loading: userLoading } = useCurrentUser()
   const currentUserId = userData?.id
 
+
   const {
     payments,
     loading: paymentsLoading,
     updatePayment,
   } = usePayments({
-    user: currentUserId,
+    user: currentUserId || undefined, // Only pass user ID when it's available
   })
 
+  
+
+  // Filter payments for current user (additional client-side filtering for safety)
+  const userPayments = useMemo(() => {
+    if (!currentUserId) return []
+    
+    return payments.filter((payment: any) => {
+      const paymentUserId = typeof payment.user === 'object' ? payment.user._id : payment.user
+      return paymentUserId === currentUserId
+    })
+  }, [payments, currentUserId])
+
   // Separate payments by status
-  const completedPayments = payments.filter((payment: any) => payment.status === "Completed")
-  const pendingPayments = payments.filter((payment: any) => payment.status === "Pending")
-  const failedPayments = payments.filter((payment: any) => payment.status === "Failed")
+  const completedPayments = userPayments.filter((payment: any) => payment.status === "Completed")
+  const pendingPayments = userPayments.filter((payment: any) => payment.status === "Pending")
+  const failedPayments = userPayments.filter((payment: any) => payment.status === "Failed")
 
   // Calculate totals
   const totalPaid = completedPayments.reduce((sum: number, payment: any) => sum + payment.amount, 0)
@@ -118,8 +131,35 @@ export default function StudentPaymentsPage() {
     }
   }
 
-  // get method for pending payments already registred
+  // Show loading state while user data is being fetched
+  if (userLoading) {
+    return (
+      <DashboardLayout userRole="student">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading user data...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
+  // Show error if user data couldn't be loaded
+  if (!userData) {
+    return (
+      <DashboardLayout userRole="student">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">Unable to load user data. Please log in again.</p>
+            <Button onClick={() => window.location.href = '/auth/login'}>
+              Go to Login
+            </Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout userRole="student">
@@ -129,6 +169,52 @@ export default function StudentPaymentsPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Payments</h1>
             <p className="text-gray-600">Manage your hackathon payments and view transaction history</p>
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                <strong>Debug Info:</strong> User ID: {currentUserId || 'Not loaded'} | 
+                Total Payments: {payments.length} | 
+                Filtered Payments: {userPayments.length}
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const response = await fetch('/api/payments/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUserId })
+                  })
+                  const result = await response.json()
+                  
+                  if (result.success) {
+                    toast({
+                      title: "Sync Complete",
+                      description: result.message,
+                    })
+                    // Refresh payments after sync
+                    window.location.reload()
+                  } else {
+                    toast({
+                      title: "Sync Failed",
+                      description: result.error,
+                      variant: "destructive",
+                    })
+                  }
+                } catch (error) {
+                  toast({
+                    title: "Sync Failed",
+                    description: "Unable to sync payments",
+                    variant: "destructive",
+                  })
+                }
+              }}
+              disabled={!currentUserId || paymentsLoading}
+            >
+              {paymentsLoading ? 'Loading...' : 'Sync Payments'}
+            </Button>
           </div>
         </div>
 
@@ -201,6 +287,45 @@ export default function StudentPaymentsPage() {
               {pendingPayments.length === 0 && (
                 <div className="text-center py-8">
                   <p className="text-gray-600">No pending payments</p>
+                  {userPayments.length === 0 && (
+                    <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-800 mb-2">
+                        If you've registered for hackathons but don't see payments here, try syncing your payment records.
+                      </p>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/payments/sync', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ userId: currentUserId })
+                            })
+                            const result = await response.json()
+                            
+                            toast({
+                              title: result.success ? "Sync Complete" : "Sync Failed",
+                              description: result.message || result.error,
+                              variant: result.success ? "default" : "destructive",
+                            })
+                            
+                            if (result.success && result.data.createdCount > 0) {
+                              window.location.reload()
+                            }
+                          } catch (error) {
+                            toast({
+                              title: "Sync Failed",
+                              description: "Unable to sync payments",
+                              variant: "destructive",
+                            })
+                          }
+                        }}
+                      >
+                        Sync My Payments
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

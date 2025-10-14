@@ -84,12 +84,32 @@ export function useHackathons(params?: {
     }
   }
 
+  const refreshParticipantCounts = async () => {
+    try {
+      const response = await fetch('/api/hackathons/refresh-participants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const result = await response.json()
+      
+      if (result.success) {
+        await fetchHackathons() // Refresh hackathons after updating counts
+        return result
+      }
+      return result
+    } catch (error) {
+      console.error('Failed to refresh participant counts:', error)
+      return { success: false, error: 'Failed to refresh participant counts' }
+    }
+  }
+
   return {
     hackathons,
     loading,
     error,
     pagination,
     refetch: fetchHackathons,
+    refreshParticipantCounts,
     createHackathon,
     updateHackathon,
     deleteHackathon,

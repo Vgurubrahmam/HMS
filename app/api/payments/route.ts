@@ -23,6 +23,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     if (hackathon) query.hackathon = hackathon;
     if (status) query.status = status;
 
+   
+  
+
     // Execute query with pagination
     const skip = (page - 1) * limit;
     const [payments, total] = await Promise.all([
@@ -34,6 +37,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         .populate("registration", "paymentStatus"),
       Payment.countDocuments(query),
     ]);
+
+  
 
     const response = {
       success: true,

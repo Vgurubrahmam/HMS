@@ -17,12 +17,7 @@ export async function POST(req: NextRequest) {
     const user = await User.findOne({ email }).select("email role username image createdAt authProvider")
 
     if (user) {
-      console.log("✅ User found:", {
-        email: user.email,
-        role: user.role,
-        username: user.username,
-        authProvider: user.authProvider || "email",
-      })
+      
 
       return NextResponse.json({
         exists: true,
@@ -36,7 +31,6 @@ export async function POST(req: NextRequest) {
         },
       })
     } else {
-      console.log("❌ User not found for email:", email)
       return NextResponse.json({
         exists: false,
         user: null,

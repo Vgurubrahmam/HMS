@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 import Payment from "@/lib/models/Payment";
 import Registration from "@/lib/models/Registration";
+import Hackathon from "@/lib/models/Hackathon";
+import { refreshHackathonParticipantCount } from "@/lib/participant-utils";
 import mongoose from "mongoose";
 
 // PUT method for updating payment status
@@ -35,11 +37,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ success: false, message: "Payment not found" }, { status: 404 });
     }
 
-    // If payment is completed, update the registration status
+    // If payment is completed, update the registration status and participant count
     if (status === "Completed" && updatedPayment.registration) {
-      await Registration.findByIdAndUpdate(updatedPayment.registration._id, {
+      const registration = await Registration.findByIdAndUpdate(updatedPayment.registration._id, {
         paymentStatus: "Completed",
-      });
+      }, { new: true });
+
+      // Update hackathon participant count if registration exists
+      if (registration && registration.hackathon) {
+        await refreshHackathonParticipantCount(registration.hackathon.toString());
+      }
     }
 
     return NextResponse.json({
