@@ -135,7 +135,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     // Execute query with pagination
     const skip = (page - 1) * limit
     const [registrations, total] = await Promise.all([
-      Registration.find(query).skip(skip).limit(limit).populate("user", "username email"),
+      Registration.find(query)
+        .skip(skip)
+        .limit(limit)
+        .populate("user", "username email")
+        .populate("hackathon", "title startDate endDate registrationFee venue maxParticipants currentParticipants status"),
       Registration.countDocuments(query),
     ])
 

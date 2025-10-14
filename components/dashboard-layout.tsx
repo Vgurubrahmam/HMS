@@ -34,6 +34,7 @@ import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { ModeToggle } from "./mode-toggle"
+import { NotificationBell } from "./notification-bell"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import ProfileForm from "@/components/ProfileForm"
 
@@ -63,10 +64,10 @@ const roleMenuItems = {
   ],
   student: [
     { icon: Home, label: "Dashboard", href: "/dashboard/student" },
-    { icon: BarChart3, label: "Progress Tracker", href: "/dashboard/student/progress" },
     { icon: Calendar, label: "Hackathons", href: "/dashboard/student/hackathons" },
     { icon: CreditCard, label: "Payments", href: "/dashboard/student/payments" },
     { icon: FileText, label: "Certificates", href: "/dashboard/student/certificates" },
+    { icon: BarChart3, label: "Progress Tracker", href: "/dashboard/student/progress" },
   ],
   mentor: [
     { icon: Home, label: "Dashboard", href: "/dashboard/mentor" },
@@ -387,8 +388,7 @@ useEffect(() => {
           </Button>
 
           <div className="flex justify-end items-center gap-4 w-full">
-            
-            
+            <NotificationBell   className="text-primary border border-primary" />
             <ModeToggle />
           </div>
         </header>

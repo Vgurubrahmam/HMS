@@ -61,6 +61,9 @@ export default function CoordinatorTeamsPage() {
     room: "",
     teamLead: "",
     members: [] as string[],
+    status: "Active",
+    submissionStatus: "Planning",
+    progress: 0,
   })
 const formmatedTeam={
   name: newTeam.name,
@@ -70,6 +73,9 @@ const formmatedTeam={
     room: newTeam.room,
     teamLead: newTeam.teamLead,
     members: newTeam.members,
+    status: newTeam.status,
+    submissionStatus: newTeam.submissionStatus,
+    progress: newTeam.progress,
 }
 
   const handleEditTeam = (team: any) => {
@@ -82,6 +88,9 @@ const formmatedTeam={
       room: team.room || "",
       teamLead: team.teamLead?._id || "",
       members: team.members?.filter((m: any) => m && m._id).map((m: any) => m._id) || [],
+      status: team.status || "Active",
+      submissionStatus: team.submissionStatus || "Planning",
+      progress: team.progress || 0,
     });
     setIsEditDialogOpen(true);
   };
@@ -118,6 +127,9 @@ const formmatedTeam={
         room: "",
         teamLead: "",
         members: [],
+        status: "Active",
+        submissionStatus: "Planning",
+        progress: 0,
       });
       setEditingTeam(null);
       setIsEditDialogOpen(false);
@@ -253,6 +265,9 @@ const formmatedTeam={
       room: "",
       teamLead: "",
       members: [],
+      status: "Active",
+      submissionStatus: "Planning",
+      progress: 0,
     });
     setSelectedTeam(null); // Clear edit-related state
     setIsCreateDialogOpen(false);
@@ -614,6 +629,50 @@ useEffect(()=>{
                   </div>
                 </div>
 
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Team Status</Label>
+                    <Select value={newTeam.status} onValueChange={(value) => setNewTeam({ ...newTeam, status: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Active">Active</SelectItem>
+                        <SelectItem value="Inactive">Inactive</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                        <SelectItem value="Pending">Pending</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="submissionStatus">Submission Status</Label>
+                    <Select value={newTeam.submissionStatus} onValueChange={(value) => setNewTeam({ ...newTeam, submissionStatus: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select submission status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Planning">Planning</SelectItem>
+                        <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="Under Review">Under Review</SelectItem>
+                        <SelectItem value="Submitted">Submitted</SelectItem>
+                        <SelectItem value="Not Started">Not Started</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="progress">Progress (%)</Label>
+                    <Input
+                      id="progress"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={newTeam.progress}
+                      onChange={(e) => setNewTeam({ ...newTeam, progress: parseInt(e.target.value) || 0 })}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label>Additional Team Members</Label>
                   <div className="max-h-40 overflow-y-auto border rounded-md p-2">
@@ -751,6 +810,50 @@ useEffect(()=>{
                         <SelectItem value="Conference Room 2">Conference Room 2</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="editStatus">Team Status</Label>
+                    <Select value={newTeam.status} onValueChange={(value) => setNewTeam({ ...newTeam, status: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Active">Active</SelectItem>
+                        <SelectItem value="Inactive">Inactive</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                        <SelectItem value="Pending">Pending</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editSubmissionStatus">Submission Status</Label>
+                    <Select value={newTeam.submissionStatus} onValueChange={(value) => setNewTeam({ ...newTeam, submissionStatus: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select submission status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Planning">Planning</SelectItem>
+                        <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="Under Review">Under Review</SelectItem>
+                        <SelectItem value="Submitted">Submitted</SelectItem>
+                        <SelectItem value="Not Started">Not Started</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editProgress">Progress (%)</Label>
+                    <Input
+                      id="editProgress"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={newTeam.progress}
+                      onChange={(e) => setNewTeam({ ...newTeam, progress: parseInt(e.target.value) || 0 })}
+                      placeholder="0"
+                    />
                   </div>
                 </div>
 

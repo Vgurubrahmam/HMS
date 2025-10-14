@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Calendar, Trophy, Users, BookOpen, Plus, Eye, Award, TrendingUp, Loader2, Clock, AlertCircle, Bell } from "lucide-react"
 import { useHackathons } from "@/hooks/use-hackathons"
 import { useRegistrations } from "@/hooks/use-registrations"
@@ -16,11 +15,9 @@ import {
   useHackathonStatuses, 
   useRegistrationStatuses, 
   useLiveDashboardStats,
-  useDeadlineAlerts 
 } from "@/hooks/use-live-status"
 import { getStatusBadgeColor, getStatusIcon } from "@/lib/status-utils"
 import { BackgroundStatusUpdater, useStatusUpdater } from "@/components/background-status-updater"
-import { StatusDebugWidget } from "@/components/status-debug-widget"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 
@@ -52,7 +49,6 @@ export default function StudentDashboard() {
   const hackathonStatuses = useHackathonStatuses(hackathons)
   const registrationStatuses = useRegistrationStatuses(registrations, hackathons)
   const liveStats = useLiveDashboardStats(hackathons, registrations, teams, certificates, currentUserId || "")
-  const deadlineAlerts = useDeadlineAlerts(hackathons, registrations.filter((r: any) => r.user?._id === currentUserId))
 
   // Filter data with live status information
   const myRegistrations = registrations.filter((r: any) => r.user?._id === currentUserId)
@@ -60,6 +56,123 @@ export default function StudentDashboard() {
     (t: any) => t.members?.some((m: any) => m._id === currentUserId) || t.teamLead?._id === currentUserId,
   )
   const myCertificates = certificates.filter((c: any) => c.user?._id === currentUserId)
+  
+  // Helper function to check if user is registered for a hackathon
+  const getUserRegistrationStatus = (hackathonId: string) => {
+    const registration = myRegistrations.find((r: any) => r.hackathon?._id === hackathonId)
+    if (!registration) return null
+    
+    // Check payment status to determine final status
+    const paymentStatus = registration.paymentStatus || registration.payment?.status
+    if (paymentStatus === "Completed" || paymentStatus === "Paid" || paymentStatus === "Registered") {
+      return "Registered"
+    } else if (paymentStatus === "Pending") {
+      return "Payment Pending"
+    }
+    return "Registered"
+  }
+
+  // Helper function to format dates safely
+  const formatDate = (dateValue: any) => {
+    if (!dateValue) return 'Dates coming soon'
+    
+    try {
+      const date = new Date(dateValue)
+      if (isNaN(date.getTime())) return 'Invalid date'
+      
+      // Format date in a user-friendly way
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      })
+    } catch (error) {
+      console.error('Date formatting error:', error, 'Value:', dateValue)
+      return 'Invalid date'
+    }
+  }
+
+  // Helper function specifically for registration dates
+  const formatRegistrationDate = (registration: any) => {
+    const dateValue = registration.registrationDate || registration.createdAt
+    
+    if (!dateValue) {
+      console.warn('No registration date found:', registration)
+      return 'Date not available'
+    }
+    
+    try {
+      const date = new Date(dateValue)
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid registration date:', dateValue)
+        return 'Invalid date'
+      }
+      
+      // Format date in a user-friendly way
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      })
+    } catch (error) {
+      console.error('Registration date formatting error:', error, 'Value:', dateValue)
+      return 'Date error'
+    }
+  }
+
+  // Helper function to format date range with better messaging
+  const formatDateRange = (startDate: any, endDate: any) => {
+    const start = startDate ? formatDate(startDate) : null
+    const end = endDate ? formatDate(endDate) : null
+    
+    // Debug logging to see what data we're getting
+    console.log('Date range debug:', { startDate, endDate, start, end })
+    
+    if (!start && !end) return 'Event dates coming soon'
+    if (!start) return `End: ${end}`
+    if (!end) return `Start: ${start}`
+    
+    // If both dates are the same, show single date
+    if (start === end) return start
+    
+    return `${start} - ${end}`
+  }
+
+  // Helper function to format time until/since event dynamically
+  const formatTimeUntilEvent = (startDate: any, endDate: any) => {
+    if (!startDate || !endDate) return ""
+    
+    const now = new Date()
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    
+    // Validate dates
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return ""
+    
+    // Event hasn't started yet
+    if (now < start) {
+      const daysUntil = Math.ceil((start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      if (daysUntil === 0) return "Starting today"
+      if (daysUntil === 1) return "Starting tomorrow" 
+      if (daysUntil > 0) return `${daysUntil} days to go`
+      return ""
+    }
+    
+    // Event is ongoing
+    if (now >= start && now <= end) {
+      const daysRemaining = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      if (daysRemaining === 0) return "Ending today"
+      if (daysRemaining === 1) return "Ending tomorrow"
+      if (daysRemaining > 0) return `${daysRemaining} days remaining`
+      return "Event in progress"
+    }
+    
+    // Event has ended
+    const daysAgo = Math.floor((now.getTime() - end.getTime()) / (1000 * 60 * 60 * 24))
+    if (daysAgo === 0) return "Ended today"
+    if (daysAgo === 1) return "Ended yesterday"
+    return `Ended ${daysAgo} days ago`
+  }
   
   // Get hackathons with live statuses
   const openHackathons = hackathonStatuses.filter(hs => hs.status.canRegister)
@@ -185,34 +298,7 @@ export default function StudentDashboard() {
             
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleManualStatusUpdate}
-              disabled={isUpdatingStatus}
-              className="text-xs"
-            >
-              {isUpdatingStatus ? (
-                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-              ) : (
-                <Clock className="mr-2 h-3 w-3" />
-              )}
-              {isUpdatingStatus ? 'Updating...' : 'Refresh Status'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleForceRefresh}
-              disabled={isUpdatingStatus}
-              className="text-xs bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
-            >
-              {isUpdatingStatus ? (
-                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-              ) : (
-                <AlertCircle className="mr-2 h-3 w-3" />
-              )}
-              Force Fix Status
-            </Button>
+            
             <Link href="/dashboard/student/hackathons">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
@@ -222,29 +308,7 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* Deadline Alerts */}
-        {deadlineAlerts.length > 0 && (
-          <div className="space-y-2">
-            {deadlineAlerts.slice(0, 3).map((alert, index) => (
-              <Alert key={index} className={`border-l-4 ${
-                alert.priority === 'high' ? 'border-l-red-500 bg-red-50' : 
-                alert.priority === 'medium' ? 'border-l-yellow-500 bg-yellow-50' : 
-                'border-l-blue-500 bg-blue-50'
-              }`}>
-                <div className="flex items-center gap-2">
-                  {alert.priority === 'high' ? (
-                    <AlertCircle className="h-4 w-4 text-red-600" />
-                  ) : (
-                    <Bell className="h-4 w-4 text-blue-600" />
-                  )}
-                  <AlertDescription className="font-medium">
-                    {alert.message}
-                  </AlertDescription>
-                </div>
-              </Alert>
-            ))}
-          </div>
-        )}
+       
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -321,7 +385,6 @@ export default function StudentDashboard() {
             <TabsTrigger value="hackathons">My Hackathons</TabsTrigger>
             <TabsTrigger value="teams">My Teams</TabsTrigger>
             <TabsTrigger value="achievements">Achievements</TabsTrigger>
-            <TabsTrigger value="debug" className="text-red-600">Debug Status</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -342,12 +405,18 @@ export default function StudentDashboard() {
                     {upcomingHackathons.slice(0, 3).map((hackathonStatus) => {
                       const hackathon = hackathonStatus.hackathon
                       const status = hackathonStatus.status
+                      const userRegistrationStatus = getUserRegistrationStatus(hackathon._id)
+                      
+                      // Determine which status to display
+                      const displayStatus = userRegistrationStatus || status.status
+                      const isUserRegistered = userRegistrationStatus !== null
+                      
                       return (
                         <div key={hackathon._id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div>
                             <h4 className="font-medium">{hackathon.title}</h4>
                             <p className="text-sm text-gray-600">
-                              📅 {new Date(hackathon.startDate).toLocaleDateString()}
+                              📅 {formatDate(hackathon.startDate)}
                               {status.timeRemaining && (
                                 <span className="ml-2 text-blue-600">
                                   • {status.timeRemaining} to go
@@ -360,8 +429,16 @@ export default function StudentDashboard() {
                           </div>
                           <div className="text-right">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm">{getStatusIcon(status.status)}</span>
-                              <Badge className={getStatusBadgeColor(status.status)}>{status.status}</Badge>
+                              <span className="text-sm">{getStatusIcon(displayStatus)}</span>
+                              <Badge className={
+                                isUserRegistered 
+                                  ? userRegistrationStatus === "Registered" 
+                                    ? "bg-green-100 text-green-800" 
+                                    : "bg-yellow-100 text-yellow-800"
+                                  : getStatusBadgeColor(status.status)
+                              }>
+                                {displayStatus}
+                              </Badge>
                             </div>
                             <p className="text-xs text-gray-500">
                               {hackathon.currentParticipants}/{hackathon.maxParticipants} registered
@@ -460,6 +537,8 @@ export default function StudentDashboard() {
                       hs.hackathon._id === registration.hackathon?._id
                     )
                     
+                   
+                    
                     return (
                       <div key={registration._id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex-1">
@@ -472,13 +551,18 @@ export default function StudentDashboard() {
                             )}
                           </div>
                           <p className="text-sm text-gray-600 mt-1">
-                            📅 {new Date(registration.hackathon?.startDate).toLocaleDateString()} -{" "}
-                            {new Date(registration.hackathon?.endDate).toLocaleDateString()}
+                            📅 <span className="font-medium">{formatDateRange(registration.hackathon?.startDate, registration.hackathon?.endDate)}</span>
+                            {registration.hackathon?.startDate && registration.hackathon?.endDate && (
+                              <span className="ml-2 text-blue-600 text-xs">
+                                • {formatTimeUntilEvent(registration.hackathon.startDate, registration.hackathon.endDate)}
+                              </span>
+                            )}
                           </p>
                           <p className="text-sm text-gray-600">
-                            💰 {registration.paymentAmount || registration.hackathon?.registrationFee} • Registered:{" "}
-                            {new Date(registration.registrationDate).toLocaleDateString()}
+                            💰 {registration.paymentAmount || registration.hackathon?.registrationFee || 'TBD'} • Registered:{" "}
+                            {formatRegistrationDate(registration)}
                           </p>
+                          
                           {hackathonStatus && (
                             <p className="text-sm text-blue-600 mt-1">
                               {getStatusIcon(hackathonStatus.status.status)} Event Status: {hackathonStatus.status.status}
@@ -610,7 +694,7 @@ export default function StudentDashboard() {
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-600">Issue Date:</span>
-                          <span>{new Date(certificate.issueDate).toLocaleDateString()}</span>
+                          <span>{formatDate(certificate.issueDate)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-600">Certificate ID:</span>
@@ -713,10 +797,7 @@ export default function StudentDashboard() {
             </div>
           </TabsContent>
 
-          {/* Debug Panel - Remove in production */}
-          <TabsContent value="debug" className="space-y-6">
-            <StatusDebugWidget />
-          </TabsContent>
+          
         </Tabs>
       </div>
     </DashboardLayout>

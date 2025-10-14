@@ -136,8 +136,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       Registration.find(query)
         .skip(skip)
         .limit(limit)
+        .select('+registrationDate +createdAt +updatedAt +paymentStatus +status +paymentAmount') // Explicitly include timestamp fields
         .populate("user", "username email")
-        .populate("hackathon", "title registrationFee")
+        .populate("hackathon", "title startDate endDate registrationFee venue maxParticipants currentParticipants status registrationDeadline organizer")
         .populate("payment", "amount status paymentMethod dueDate"),
       Registration.countDocuments(query),
     ])
@@ -151,6 +152,19 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         total,
         pages: Math.ceil(total / limit),
       },
+    }
+
+    // Debug logging to check timestamp fields
+    if (registrations.length > 0) {
+      console.log('Registration date debug from API:', {
+        sampleRegistration: {
+          id: registrations[0]._id,
+          registrationDate: registrations[0].registrationDate,
+          createdAt: registrations[0].createdAt,
+          updatedAt: registrations[0].updatedAt,
+          hasTimestamps: !!(registrations[0].createdAt && registrations[0].updatedAt)
+        }
+      })
     }
 
     // console.log("Fetch registrations successful")

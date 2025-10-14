@@ -81,7 +81,7 @@ export async function POST(req: Request): Promise<Response> {
         role: user.role || "empty",
       },
       secretkey,
-      { expiresIn: "7d" },
+      { expiresIn: "1h" },
     )
 
     // Set token in cookies with secure options
@@ -90,7 +90,7 @@ export async function POST(req: Request): Promise<Response> {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: 1 * 60, // 1 hour
     })
 
     // Prepare response
