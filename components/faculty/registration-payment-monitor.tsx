@@ -56,68 +56,76 @@ export function RegistrationPaymentMonitor() {
   const [registrations, setRegistrations] = useState<Registration[]>([])
   const [filteredRegistrations, setFilteredRegistrations] = useState<Registration[]>([])
   const [hackathons, setHackathons] = useState<any[]>([])
+  const [departments, setDepartments] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [hackathonFilter, setHackathonFilter] = useState("all")
+  const [departmentFilter, setDepartmentFilter] = useState("all")
   const [stats, setStats] = useState({
     totalRegistrations: 0,
     completedPayments: 0,
     pendingPayments: 0,
-    totalRevenue: 0
+    failedPayments: 0,
+    totalRevenue: 0,
+    pendingRevenue: 0
   })
   const { toast } = useToast()
 
   useEffect(() => {
-    fetchRegistrations()
-    fetchHackathons()
+    fetchData()
   }, [])
 
   useEffect(() => {
     filterRegistrations()
-    calculateStats()
-  }, [registrations, searchTerm, statusFilter, hackathonFilter])
+  }, [registrations, searchTerm, statusFilter, hackathonFilter, departmentFilter])
 
-  const fetchRegistrations = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/registrations")
+      const response = await fetch("/api/faculty/registration-monitor")
       if (response.ok) {
         const data = await response.json()
-        setRegistrations(data.data || [])
+        if (data.success) {
+          setRegistrations(data.data.registrations || [])
+          setStats(data.data.stats || {})
+          setDepartments(data.data.departments || [])
+          setHackathons(data.data.hackathons || [])
+        } else {
+          throw new Error(data.message || 'Failed to fetch data')
+        }
+      } else {
+        throw new Error('API request failed')
       }
     } catch (error) {
+      console.error("Error fetching registration monitor data:", error)
       toast({
         title: "Error",
-        description: "Failed to fetch registrations",
+        description: "Failed to fetch registration and payment data",
         variant: "destructive",
       })
+      setRegistrations([])
+      setHackathons([])
+      setDepartments([])
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchHackathons = async () => {
-    try {
-      const response = await fetch("/api/hackathons")
-      if (response.ok) {
-        const data = await response.json()
-        setHackathons(data.data || [])
-      }
-    } catch (error) {
-      console.error("Failed to fetch hackathons:", error)
-    }
-  }
-
   const filterRegistrations = () => {
+    if (!Array.isArray(registrations)) {
+      setFilteredRegistrations([])
+      return
+    }
+
     let filtered = registrations
 
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(reg => 
-        reg.user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        reg.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        reg.hackathon.title.toLowerCase().includes(searchTerm.toLowerCase())
+        reg.user?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        reg.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        reg.hackathon?.title?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
@@ -131,23 +139,12 @@ export function RegistrationPaymentMonitor() {
       filtered = filtered.filter(reg => reg.hackathon._id === hackathonFilter)
     }
 
+    // Department filter
+    if (departmentFilter !== "all") {
+      filtered = filtered.filter(reg => reg.user.branch === departmentFilter)
+    }
+
     setFilteredRegistrations(filtered)
-  }
-
-  const calculateStats = () => {
-    const totalRegistrations = registrations.length
-    const completedPayments = registrations.filter(reg => reg.paymentStatus === "Completed").length
-    const pendingPayments = registrations.filter(reg => reg.paymentStatus === "Pending").length
-    const totalRevenue = registrations
-      .filter(reg => reg.paymentStatus === "Completed")
-      .reduce((sum, reg) => sum + (reg.payment?.amount || reg.hackathon.registrationFee), 0)
-
-    setStats({
-      totalRegistrations,
-      completedPayments,
-      pendingPayments,
-      totalRevenue
-    })
   }
 
   const getPaymentStatusColor = (status: string) => {
@@ -170,15 +167,24 @@ export function RegistrationPaymentMonitor() {
   }
 
   const exportData = () => {
+    if (!Array.isArray(filteredRegistrations) || filteredRegistrations.length === 0) {
+      toast({
+        title: "No Data",
+        description: "No registration data available to export",
+        variant: "destructive",
+      })
+      return
+    }
+
     const csvData = filteredRegistrations.map(reg => ({
-      'Student Name': reg.user.username,
-      'Email': reg.user.email,
-      'Branch': reg.user.branch || 'N/A',
-      'Year': reg.user.year || 'N/A',
-      'Hackathon': reg.hackathon.title,
-      'Registration Date': new Date(reg.registrationDate).toLocaleDateString(),
-      'Payment Status': reg.paymentStatus,
-      'Amount': reg.payment?.amount || reg.hackathon.registrationFee,
+      'Student Name': reg.user?.username || 'N/A',
+      'Email': reg.user?.email || 'N/A',
+      'Branch': reg.user?.branch || 'N/A',
+      'Year': reg.user?.year || 'N/A',
+      'Hackathon': reg.hackathon?.title || 'N/A',
+      'Registration Date': reg.registrationDate ? new Date(reg.registrationDate).toLocaleDateString() : 'N/A',
+      'Payment Status': reg.paymentStatus || 'N/A',
+      'Amount': reg.payment?.amount || reg.hackathon?.registrationFee || 0,
       'Payment Method': reg.payment?.method || 'N/A',
       'Transaction ID': reg.payment?.transactionId || 'N/A'
     }))
@@ -211,7 +217,7 @@ export function RegistrationPaymentMonitor() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center">
@@ -261,13 +267,57 @@ export function RegistrationPaymentMonitor() {
         </Card>
       </div>
 
+      {/* Additional Stats Row */}
+      {(stats.failedPayments > 0 || stats.pendingRevenue > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <XCircle className="h-8 w-8 text-red-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Failed Payments</p>
+                  <p className="text-2xl font-bold">{stats.failedPayments}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <DollarSign className="h-8 w-8 text-orange-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Pending Revenue</p>
+                  <p className="text-2xl font-bold">${stats.pendingRevenue}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <TrendingUp className="h-8 w-8 text-indigo-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Collection Rate</p>
+                  <p className="text-2xl font-bold">
+                    {stats.totalRegistrations > 0 ? 
+                      Math.round((stats.completedPayments / stats.totalRegistrations) * 100) : 0}%
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Filters */}
       <Card>
         <CardHeader>
           <CardTitle>Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
               <Input
@@ -291,13 +341,25 @@ export function RegistrationPaymentMonitor() {
               </SelectContent>
             </Select>
 
+            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {departments.map((dept) => (
+                  <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <Select value={hackathonFilter} onValueChange={setHackathonFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Select Hackathon" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Hackathons</SelectItem>
-                {hackathons.map((hackathon) => (
+                {Array.isArray(hackathons) && hackathons.map((hackathon) => (
                   <SelectItem key={hackathon._id} value={hackathon._id}>
                     {hackathon.title}
                   </SelectItem>
@@ -308,6 +370,7 @@ export function RegistrationPaymentMonitor() {
             <Button variant="outline" onClick={() => {
               setSearchTerm("")
               setStatusFilter("all")
+              setDepartmentFilter("all")
               setHackathonFilter("all")
             }}>
               <Filter className="mr-2 h-4 w-4" />
@@ -324,33 +387,33 @@ export function RegistrationPaymentMonitor() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {filteredRegistrations.map((registration) => (
+            {Array.isArray(filteredRegistrations) && filteredRegistrations.map((registration) => (
               <div key={registration._id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <Avatar className="h-12 w-12">
-                      <AvatarImage src={registration.user.image} />
+                      <AvatarImage src={registration.user?.image} />
                       <AvatarFallback>
-                        {registration.user.username.charAt(0).toUpperCase()}
+                        {registration.user?.username?.charAt(0)?.toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
                     
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{registration.user.username}</h3>
+                        <h3 className="font-semibold">{registration.user?.username || 'Unknown User'}</h3>
                         <Badge className={getPaymentStatusColor(registration.paymentStatus)}>
                           {getPaymentIcon(registration.paymentStatus)}
                           <span className="ml-1">{registration.paymentStatus}</span>
                         </Badge>
                       </div>
                       
-                      <p className="text-sm text-gray-600">{registration.user.email}</p>
+                      <p className="text-sm text-gray-600">{registration.user?.email || 'No email'}</p>
                       
                       <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                        {registration.user.branch && (
+                        {registration.user?.branch && (
                           <span>Branch: {registration.user.branch}</span>
                         )}
-                        {registration.user.year && (
+                        {registration.user?.year && (
                           <span>Year: {registration.user.year}</span>
                         )}
                       </div>
@@ -359,13 +422,13 @@ export function RegistrationPaymentMonitor() {
 
                   <div className="text-right">
                     <div className="font-semibold text-lg">
-                      ${registration.payment?.amount || registration.hackathon.registrationFee}
+                      ${registration.payment?.amount || registration.hackathon?.registrationFee || 0}
                     </div>
                     <div className="text-sm text-gray-600">
-                      {registration.hackathon.title}
+                      {registration.hackathon?.title || 'Unknown Hackathon'}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      Registered: {new Date(registration.registrationDate).toLocaleDateString()}
+                      Registered: {registration.registrationDate ? new Date(registration.registrationDate).toLocaleDateString() : 'Unknown date'}
                     </div>
                     {registration.payment?.paymentDate && (
                       <div className="text-xs text-gray-500">
@@ -403,9 +466,12 @@ export function RegistrationPaymentMonitor() {
             ))}
           </div>
 
-          {filteredRegistrations.length === 0 && (
+          {(!Array.isArray(filteredRegistrations) || filteredRegistrations.length === 0) && (
             <div className="text-center py-8 text-gray-500">
-              No registrations found matching your criteria.
+              {!Array.isArray(filteredRegistrations) ? 
+                "Unable to load registration data." : 
+                "No registrations found matching your criteria."
+              }
             </div>
           )}
         </CardContent>

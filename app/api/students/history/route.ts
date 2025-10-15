@@ -1,176 +1,125 @@
 import { NextRequest, NextResponse } from "next/server"
 import db from "@/lib/db"
+import UserModel from "@/lib/models/User"
+import Registration from "@/lib/models/Registration"
+import Payment from "@/lib/models/Payment"
+import Hackathon from "@/lib/models/Hackathon"
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
     await db()
     
-    const { searchParams } = request.nextUrl
+    const { searchParams } = new URL(request.url)
     const department = searchParams.get('department')
     const year = searchParams.get('year')
-    const semester = searchParams.get('semester')
     
-    // Mock student history data - replace with actual database queries
-    const studentsHistory = [
-      {
-        _id: "student1",
-        student: {
-          _id: "st1",
-          username: "john_doe",
-          email: "john.doe@university.edu",
-          name: "John Doe",
-          rollNumber: "CS2021001",
-          department: "Computer Science",
-          year: 3,
-          semester: 6,
-          avatar: "/avatars/john.jpg"
-        },
-        participationHistory: [
-          {
-            hackathon: {
-              _id: "hack1",
-              title: "Tech Innovation Challenge 2024",
-              startDate: "2024-03-15",
-              endDate: "2024-03-17",
-              organizer: "Tech University"
-            },
-            registrationDate: "2024-03-10T10:00:00Z",
-            paymentStatus: "Completed",
-            paymentAmount: 500,
-            teamName: "TechInnovators",
-            teamPosition: null, // Ongoing
-            projectTitle: "AI-Powered Learning Assistant",
-            skills: ["React", "Node.js", "AI/ML"],
-            certificatesEarned: [],
-            hoursSpent: 24
+    // Get all students with their registrations and payments
+    const students = await UserModel.find({ role: 'student' }).lean()
+    
+    // Get all registrations with populated data
+    const registrations = await Registration.find()
+      .populate('user', 'username email branch year image')
+      .populate('hackathon', 'title registrationFee startDate endDate')
+      .lean()
+    
+    // Get all payments
+    const payments = await Payment.find()
+      .populate('user', '_id')
+      .populate('hackathon', '_id')
+      .lean()
+
+    // Process student data
+    const studentHistories = students.map((student: any) => {
+      // Get student's registrations
+      const studentRegistrations = registrations.filter((reg: any) => 
+        reg.user._id.toString() === student._id.toString()
+      )
+
+      // Get student's payments
+      const studentPayments = payments.filter((payment: any) => 
+        payment.user._id.toString() === student._id.toString()
+      )
+
+      // Calculate payment totals
+      const totalPaid = studentPayments
+        .filter(p => p.status === 'Completed')
+        .reduce((sum, p) => sum + p.amount, 0)
+      
+      const totalPending = studentRegistrations
+        .filter(reg => !studentPayments.some(p => 
+          p.hackathon._id.toString() === reg.hackathon._id.toString() && p.status === 'Completed'
+        ))
+        .reduce((sum, reg) => sum + reg.hackathon.registrationFee, 0)
+
+      // Process registrations with payment info
+      const processedRegistrations = studentRegistrations.map(reg => {
+        const relatedPayment = studentPayments.find(p => 
+          p.hackathon._id.toString() === reg.hackathon._id.toString()
+        )
+
+        return {
+          hackathon: reg.hackathon,
+          registrationDate: reg.registrationDate,
+          paymentStatus: relatedPayment ? relatedPayment.status : 'Pending',
+          payment: relatedPayment ? {
+            amount: relatedPayment.amount,
+            paymentDate: relatedPayment.paymentDate
+          } : null
+        }
+      })
+
+      // Calculate completed hackathons (those with end date in the past)
+      const hackathonsCompleted = studentRegistrations.filter(reg => 
+        new Date(reg.hackathon.endDate) < new Date()
+      ).length
+
+      // Calculate average performance (mock for now)
+      const averagePerformance = Math.floor(Math.random() * 40) + 60 // 60-100%
+
+      return {
+        _id: student._id,
+        username: student.username,
+        email: student.email,
+        image: student.image,
+        branch: student.branch,
+        year: student.year,
+        rollNumber: student.rollNumber || student.username, // fallback to username if no rollNumber
+        registrations: processedRegistrations.map(reg => ({
+          hackathon: {
+            _id: reg.hackathon._id,
+            title: reg.hackathon.title,
+            startDate: reg.hackathon.startDate,
+            endDate: reg.hackathon.endDate,
+            difficulty: 'Medium' // mock difficulty
           },
-          {
-            hackathon: {
-              _id: "hack2", 
-              title: "Green Tech Hackathon 2024",
-              startDate: "2024-02-10",
-              endDate: "2024-02-12",
-              organizer: "EcoTech Institute"
-            },
-            registrationDate: "2024-02-05T14:30:00Z",
-            paymentStatus: "Completed",
-            paymentAmount: 300,
-            teamName: "EcoInnovators",
-            teamPosition: 5,
-            projectTitle: "Smart Energy Monitor",
-            skills: ["IoT", "Python", "Data Analytics"],
-            certificatesEarned: ["Participation Certificate"],
-            hoursSpent: 20
-          }
-        ],
-        overallStats: {
-          totalHackathons: 2,
-          totalHoursSpent: 44,
-          totalCertificates: 1,
-          averagePosition: 5,
-          skillsGained: ["React", "Node.js", "AI/ML", "IoT", "Python", "Data Analytics"],
-          currentStreak: 1,
-          totalSpent: 800
-        }
-      },
-      {
-        _id: "student2",
-        student: {
-          _id: "st2",
-          username: "jane_smith",
-          email: "jane.smith@university.edu", 
-          name: "Jane Smith",
-          rollNumber: "CS2021002",
-          department: "Computer Science",
-          year: 3,
-          semester: 6,
-          avatar: "/avatars/jane.jpg"
-        },
-        participationHistory: [
-          {
-            hackathon: {
-              _id: "hack3",
-              title: "Startup Weekend 2024",
-              startDate: "2024-01-20",
-              endDate: "2024-01-22", 
-              organizer: "Innovation Hub"
-            },
-            registrationDate: "2024-01-15T09:00:00Z",
-            paymentStatus: "Completed",
-            paymentAmount: 400,
-            teamName: "StartupStars",
-            teamPosition: 2,
-            projectTitle: "Local Business Platform",
-            skills: ["Business Model", "UI/UX", "Marketing"],
-            certificatesEarned: ["Runner-up Certificate", "Best UI/UX Award"],
-            hoursSpent: 30
-          }
-        ],
-        overallStats: {
-          totalHackathons: 1,
-          totalHoursSpent: 30,
-          totalCertificates: 2,
-          averagePosition: 2,
-          skillsGained: ["Business Model", "UI/UX", "Marketing"],
-          currentStreak: 1,
-          totalSpent: 400
-        }
-      },
-      {
-        _id: "student3",
-        student: {
-          _id: "st3",
-          username: "alice_johnson",
-          email: "alice.johnson@university.edu",
-          name: "Alice Johnson", 
-          rollNumber: "IT2021001",
-          department: "Information Technology",
-          year: 2,
-          semester: 4,
-          avatar: "/avatars/alice.jpg"
-        },
-        participationHistory: [
-          {
-            hackathon: {
-              _id: "hack2",
-              title: "Green Tech Hackathon 2024",
-              startDate: "2024-02-10",
-              endDate: "2024-02-12",
-              organizer: "EcoTech Institute"
-            },
-            registrationDate: "2024-02-06T16:20:00Z",
-            paymentStatus: "Completed",
-            paymentAmount: 300,
-            teamName: "GreenTech",
-            teamPosition: 1,
-            projectTitle: "Carbon Footprint Tracker",
-            skills: ["Sustainability", "Mobile Development", "Data Visualization"],
-            certificatesEarned: ["Winner Certificate", "Best Innovation Award"],
-            hoursSpent: 28
-          }
-        ],
-        overallStats: {
-          totalHackathons: 1,
-          totalHoursSpent: 28,
-          totalCertificates: 2,
-          averagePosition: 1,
-          skillsGained: ["Sustainability", "Mobile Development", "Data Visualization"],
-          currentStreak: 1,
-          totalSpent: 300
-        }
+          registrationDate: reg.registrationDate,
+          paymentStatus: reg.paymentStatus,
+          team: null, // mock team data
+          certificates: [] // mock certificates
+        })),
+        totalHackathons: studentRegistrations.length,
+        completedHackathons: hackathonsCompleted,
+        totalCertificates: 0, // mock certificates count
+        averagePerformance,
+        skillsGained: ['React', 'Node.js', 'Python', 'MongoDB'].slice(0, Math.floor(Math.random() * 4) + 1) // mock skills
       }
-    ]
+    })
 
     // Filter by department if specified
-    let filteredData = studentsHistory
+    let filteredData = studentHistories
     if (department && department !== 'all') {
-      filteredData = studentsHistory.filter(s => s.student.department === department)
+      filteredData = studentHistories.filter(s => s.branch === department)
     }
 
     // Filter by year if specified
     if (year && year !== 'all') {
-      filteredData = filteredData.filter(s => s.student.year.toString() === year)
+      filteredData = filteredData.filter(s => s.year === year)
     }
+
+    // Sort by total hackathons (most active first)
+    filteredData.sort((a, b) => b.totalHackathons - a.totalHackathons)
 
     return NextResponse.json({
       success: true,

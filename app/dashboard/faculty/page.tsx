@@ -1,75 +1,155 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Users, Calendar, DollarSign, TrendingUp, GraduationCap, FileText, BarChart3 } from "lucide-react"
+import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
+
+interface FacultyAnalytics {
+  stats: {
+    totalStudents: number
+    activeStudents: number
+    activeHackathons: number
+    endingSoon: number
+    paymentCollectionRate: number
+    completionRate: number
+    totalRegistrations: number
+    completedPayments: number
+    pendingPayments: number
+    totalRevenue: number
+  }
+  departmentStats: Array<{
+    department: string
+    totalStudents: number
+    activeStudents: number
+    totalRegistrations: number
+    participationRate: number
+    paymentCompletionRate: number
+    totalRevenue: number
+  }>
+  recentActivities: Array<{
+    type: string
+    message: string
+    time: string
+    icon: string
+  }>
+  trends: {
+    studentGrowth: string
+    hackathonParticipation: string
+    paymentCollection: string
+    completionImprovement: string
+  }
+}
 
 export default function FacultyDashboard() {
+  const [analytics, setAnalytics] = useState<FacultyAnalytics | null>(null)
+  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    fetchAnalytics()
+  }, [])
+
+  const fetchAnalytics = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/analytics/faculty")
+      if (response.ok) {
+        const data = await response.json()
+        setAnalytics(data.data)
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to fetch analytics data",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch analytics data",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading || !analytics) {
+    return (
+      <DashboardLayout userRole="faculty">
+        <div className="space-y-6">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-300 rounded w-1/4 mb-2"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="animate-pulse">
+                <div className="h-32 bg-gray-200 rounded-lg"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   const stats = [
     {
       title: "Total Students",
-      value: "342",
-      change: "+23 this semester",
+      value: analytics.stats.totalStudents.toString(),
+      change: analytics.trends.studentGrowth,
       icon: Users,
       color: "text-blue-600",
     },
     {
       title: "Active Hackathons",
-      value: "8",
-      change: "3 ending this week",
+      value: analytics.stats.activeHackathons.toString(),
+      change: `${analytics.stats.endingSoon} ending this week`,
       icon: Calendar,
       color: "text-green-600",
     },
     {
       title: "Payment Collection",
-      value: "89%",
-      change: "+5% from last month",
+      value: `${analytics.stats.paymentCollectionRate}%`,
+      change: analytics.trends.paymentCollection,
       icon: DollarSign,
       color: "text-purple-600",
     },
     {
       title: "Completion Rate",
-      value: "76%",
-      change: "+8% improvement",
+      value: `${analytics.stats.completionRate}%`,
+      change: analytics.trends.completionImprovement,
       icon: GraduationCap,
       color: "text-orange-600",
     },
   ]
 
-  const departmentStats = [
-    { department: "Computer Science", students: 156, payments: 142, completion: 91 },
-    { department: "Electronics & Communication", students: 89, payments: 78, completion: 87 },
-    { department: "Information Technology", students: 67, payments: 59, completion: 88 },
-    { department: "Mechanical Engineering", students: 30, payments: 25, completion: 83 },
-  ]
+  const getTimeAgo = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+    
+    if (diffInHours < 1) return "Less than an hour ago"
+    if (diffInHours < 24) return `${diffInHours} hours ago`
+    if (diffInHours < 48) return "1 day ago"
+    return `${Math.floor(diffInHours / 24)} days ago`
+  }
 
-  const recentActivities = [
-    {
-      type: "registration",
-      message: "25 new students registered for AI Challenge",
-      time: "2 hours ago",
-      icon: Users,
-    },
-    {
-      type: "payment",
-      message: "Payment deadline reminder sent to 45 students",
-      time: "4 hours ago",
-      icon: DollarSign,
-    },
-    {
-      type: "completion",
-      message: "Web3 Hackathon completed with 78% participation",
-      time: "1 day ago",
-      icon: Calendar,
-    },
-    {
-      type: "report",
-      message: "Monthly progress report generated",
-      time: "2 days ago",
-      icon: FileText,
-    },
-  ]
+  const getActivityIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'Users': return Users
+      case 'DollarSign': return DollarSign
+      case 'Calendar': return Calendar
+      default: return FileText
+    }
+  }
 
   return (
     <DashboardLayout userRole="faculty">
@@ -80,7 +160,7 @@ export default function FacultyDashboard() {
             <h1 className="text-3xl font-bold text-gray-900">Faculty Dashboard</h1>
             <p className="text-gray-600">Monitor student progress and hackathon analytics</p>
           </div>
-          <Button>
+          <Button onClick={() => window.print()}>
             <FileText className="mr-2 h-4 w-4" />
             Generate Report
           </Button>
@@ -117,27 +197,30 @@ export default function FacultyDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {departmentStats.map((dept, index) => (
+                {analytics.departmentStats.map((dept, index) => (
                   <div key={index} className="p-4 border rounded-lg">
                     <div className="flex justify-between items-center mb-3">
                       <h4 className="font-medium">{dept.department}</h4>
-                      <Badge variant="outline">{dept.students} students</Badge>
+                      <Badge variant="outline">{dept.totalStudents} students</Badge>
                     </div>
 
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span>Payment Collection</span>
-                        <span>
-                          {dept.payments}/{dept.students} ({Math.round((dept.payments / dept.students) * 100)}%)
-                        </span>
+                        <span>Participation Rate</span>
+                        <span>{dept.participationRate.toFixed(1)}%</span>
                       </div>
-                      <Progress value={(dept.payments / dept.students) * 100} className="h-2" />
+                      <Progress value={dept.participationRate} className="h-2" />
 
                       <div className="flex justify-between text-sm">
-                        <span>Completion Rate</span>
-                        <span>{dept.completion}%</span>
+                        <span>Payment Completion</span>
+                        <span>{dept.paymentCompletionRate.toFixed(1)}%</span>
                       </div>
-                      <Progress value={dept.completion} className="h-2" />
+                      <Progress value={dept.paymentCompletionRate} className="h-2" />
+
+                      <div className="flex justify-between text-sm mt-2">
+                        <span>Revenue Generated</span>
+                        <span className="font-medium">${dept.totalRevenue}</span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -153,8 +236,8 @@ export default function FacultyDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentActivities.map((activity, index) => {
-                  const Icon = activity.icon
+                {analytics.recentActivities.map((activity, index) => {
+                  const Icon = getActivityIcon(activity.icon)
                   return (
                     <div key={index} className="flex items-start gap-3 p-3 border rounded-lg">
                       <div className="p-2 bg-blue-100 rounded-lg">
@@ -162,7 +245,7 @@ export default function FacultyDashboard() {
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium">{activity.message}</p>
-                        <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
+                        <p className="text-xs text-gray-500 mt-1">{getTimeAgo(activity.time)}</p>
                       </div>
                     </div>
                   )
@@ -180,25 +263,104 @@ export default function FacultyDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button variant="outline" className="h-20 flex-col">
-                <Users className="h-6 w-6 mb-2" />
-                Student List
-              </Button>
-              <Button variant="outline" className="h-20 flex-col">
-                <DollarSign className="h-6 w-6 mb-2" />
-                Payment Reports
-              </Button>
-              <Button variant="outline" className="h-20 flex-col">
-                <BarChart3 className="h-6 w-6 mb-2" />
-                Analytics
-              </Button>
-              <Button variant="outline" className="h-20 flex-col">
-                <FileText className="h-6 w-6 mb-2" />
-                Export Data
-              </Button>
+              <Link href="/dashboard/faculty/students">
+                <Button variant="outline" className="h-20 flex-col w-full">
+                  <Users className="h-6 w-6 mb-2" />
+                  Student List
+                </Button>
+              </Link>
+              <Link href="/dashboard/faculty/payments">
+                <Button variant="outline" className="h-20 flex-col w-full">
+                  <DollarSign className="h-6 w-6 mb-2" />
+                  Payment Reports
+                </Button>
+              </Link>
+              <Link href="/dashboard/faculty/student-analytics">
+                <Button variant="outline" className="h-20 flex-col w-full">
+                  <BarChart3 className="h-6 w-6 mb-2" />
+                  Analytics
+                </Button>
+              </Link>
+              <Link href="/dashboard/faculty/registration-monitor">
+                <Button variant="outline" className="h-20 flex-col w-full">
+                  <FileText className="h-6 w-6 mb-2" />
+                  Monitor
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
+
+        {/* Summary Statistics */}
+        <div className="grid lg:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Registration Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span>Total Registrations</span>
+                  <span className="font-bold">{analytics.stats.totalRegistrations}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Active Students</span>
+                  <span className="font-bold text-green-600">{analytics.stats.activeStudents}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Participation Rate</span>
+                  <span className="font-bold text-blue-600">
+                    {((analytics.stats.activeStudents / analytics.stats.totalStudents) * 100).toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span>Completed Payments</span>
+                  <span className="font-bold text-green-600">{analytics.stats.completedPayments}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Pending Payments</span>
+                  <span className="font-bold text-yellow-600">{analytics.stats.pendingPayments}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total Revenue</span>
+                  <span className="font-bold text-purple-600">${analytics.stats.totalRevenue}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance Metrics</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span>Completion Rate</span>
+                  <span className="font-bold">{analytics.stats.completionRate}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Payment Collection</span>
+                  <span className="font-bold">{analytics.stats.paymentCollectionRate}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Active Hackathons</span>
+                  <span className="font-bold text-blue-600">{analytics.stats.activeHackathons}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </DashboardLayout>
   )

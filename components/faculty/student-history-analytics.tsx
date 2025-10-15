@@ -105,8 +105,18 @@ export function StudentHistoryAnalytics() {
       const response = await fetch("/api/students/history")
       if (response.ok) {
         const data = await response.json()
-        setStudents(data.data || [])
+        if (data.success && Array.isArray(data.data)) {
+          setStudents(data.data)
+        } else {
+          setStudents([])
+          toast({
+            title: "Warning",
+            description: "No student data available",
+            variant: "default",
+          })
+        }
       } else {
+        setStudents([])
         toast({
           title: "Error",
           description: "Failed to fetch student histories",
@@ -114,6 +124,8 @@ export function StudentHistoryAnalytics() {
         })
       }
     } catch (error) {
+      console.error("Error fetching student histories:", error)
+      setStudents([])
       toast({
         title: "Error",
         description: "Failed to fetch student histories",
@@ -129,10 +141,25 @@ export function StudentHistoryAnalytics() {
       const response = await fetch("/api/analytics/departments")
       if (response.ok) {
         const data = await response.json()
-        setDepartmentStats(data.data || [])
+        if (data.success && data.data && Array.isArray(data.data.departments)) {
+          // Transform the API data to match expected interface
+          const transformedStats = data.data.departments.map((dept: any) => ({
+            department: dept.department,
+            totalStudents: dept.totalStudents,
+            activeStudents: dept.activeParticipants,
+            totalRegistrations: dept.hackathonStats?.totalParticipations || 0,
+            averageParticipation: dept.participationRate
+          }))
+          setDepartmentStats(transformedStats)
+        } else {
+          setDepartmentStats([])
+        }
+      } else {
+        setDepartmentStats([])
       }
     } catch (error) {
       console.error("Failed to fetch department stats:", error)
+      setDepartmentStats([])
     }
   }
 
@@ -413,7 +440,23 @@ export function StudentHistoryAnalytics() {
           </Card>
 
           {/* Student List */}
-          <div className="grid gap-4">
+          {loading ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-500">Loading student data...</p>
+              </CardContent>
+            </Card>
+          ) : filteredStudents.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No students found</p>
+                <p className="text-sm text-gray-400 mt-2">Try adjusting your filters or check back later</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
             {filteredStudents.map((student) => (
               <Card key={student._id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
@@ -488,38 +531,49 @@ export function StudentHistoryAnalytics() {
                 </CardContent>
               </Card>
             ))}
-          </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="departments">
           <div className="grid gap-4">
-            {departmentStats.map((dept, index) => (
-              <Card key={index}>
-                <CardHeader>
-                  <CardTitle>{dept.department} Department</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Total Students</p>
-                      <p className="text-2xl font-bold">{dept.totalStudents}</p>
+            {Array.isArray(departmentStats) && departmentStats.length > 0 ? (
+              departmentStats.map((dept, index) => (
+                <Card key={index}>
+                  <CardHeader>
+                    <CardTitle>{dept.department} Department</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Total Students</p>
+                        <p className="text-2xl font-bold">{dept.totalStudents}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Active Students</p>
+                        <p className="text-2xl font-bold text-green-600">{dept.activeStudents}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Total Registrations</p>
+                        <p className="text-2xl font-bold text-blue-600">{dept.totalRegistrations}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Participation Rate</p>
+                        <p className="text-2xl font-bold text-purple-600">{dept.averageParticipation.toFixed(1)}%</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Active Students</p>
-                      <p className="text-2xl font-bold text-green-600">{dept.activeStudents}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Total Registrations</p>
-                      <p className="text-2xl font-bold text-blue-600">{dept.totalRegistrations}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Participation Rate</p>
-                      <p className="text-2xl font-bold text-purple-600">{dept.averageParticipation.toFixed(1)}%</p>
-                    </div>
-                  </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No department analytics available</p>
+                  <p className="text-sm text-gray-400 mt-2">Department statistics will appear here once data is loaded</p>
                 </CardContent>
               </Card>
-            ))}
+            )}
           </div>
         </TabsContent>
 

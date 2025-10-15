@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,117 +11,121 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { Users, Search, Filter, Eye, Mail, Phone, GraduationCap, Trophy, Calendar, DollarSign } from "lucide-react"
+import { Users, Search, Filter, Eye, Mail, Phone, GraduationCap, Trophy, Calendar, DollarSign, Download } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+
+interface Student {
+  _id: string
+  username: string
+  email: string
+  branch?: string
+  year?: string
+  image?: string
+  registrations: Array<{
+    hackathon: {
+      _id: string
+      title: string
+      registrationFee: number
+    }
+    registrationDate: string
+    paymentStatus: string
+    payment?: {
+      amount: number
+      paymentDate: string
+    }
+  }>
+  totalRegistrations: number
+  totalPaid: number
+  totalPending: number
+  hackathonsCompleted: number
+  averagePerformance: number
+}
 
 export default function FacultyStudentsPage() {
-  const [students, setStudents] = useState([
-    {
-      id: 1,
-      name: "Sarah Johnson",
-      email: "sarah.johnson@university.edu",
-      studentId: "CS2021001",
-      department: "Computer Science",
-      year: "3rd Year",
-      phone: "+1 (555) 123-4567",
-      avatar: "/placeholder.svg?height=40&width=40",
-      hackathonsParticipated: 5,
-      hackathonsWon: 2,
-      totalPayments: 285,
-      pendingPayments: 0,
-      currentTeam: "Code Crushers",
-      currentHackathon: "AI Innovation Challenge 2024",
-      skills: ["Python", "Machine Learning", "React", "Node.js"],
-      achievements: ["2nd Place - AI Challenge", "Best Innovation Award"],
-      registrationDate: "2024-01-05",
-      lastActive: "2024-01-15",
-      paymentStatus: "Paid",
-      progressScore: 85,
-    },
-    {
-      id: 2,
-      name: "Mike Chen",
-      email: "mike.chen@university.edu",
-      studentId: "CS2022015",
-      department: "Computer Science",
-      year: "2nd Year",
-      phone: "+1 (555) 234-5678",
-      avatar: "/placeholder.svg?height=40&width=40",
-      hackathonsParticipated: 3,
-      hackathonsWon: 1,
-      totalPayments: 185,
-      pendingPayments: 75,
-      currentTeam: "Blockchain Builders",
-      currentHackathon: "Web3 Developer Summit",
-      skills: ["JavaScript", "Solidity", "React", "Web3"],
-      achievements: ["3rd Place - Blockchain Hackathon"],
-      registrationDate: "2024-01-08",
-      lastActive: "2024-01-14",
-      paymentStatus: "Pending",
-      progressScore: 72,
-    },
-    {
-      id: 3,
-      name: "Emily Davis",
-      email: "emily.davis@university.edu",
-      studentId: "IT2021045",
-      department: "Information Technology",
-      year: "3rd Year",
-      phone: "+1 (555) 345-6789",
-      avatar: "/placeholder.svg?height=40&width=40",
-      hackathonsParticipated: 4,
-      hackathonsWon: 1,
-      totalPayments: 240,
-      pendingPayments: 0,
-      currentTeam: "Mobile Masters",
-      currentHackathon: "Mobile App Hackathon",
-      skills: ["React Native", "Flutter", "UI/UX", "Firebase"],
-      achievements: ["Best UI/UX Design", "People's Choice Award"],
-      registrationDate: "2024-01-03",
-      lastActive: "2024-01-16",
-      paymentStatus: "Paid",
-      progressScore: 91,
-    },
-    {
-      id: 4,
-      name: "Alex Kumar",
-      email: "alex.kumar@university.edu",
-      studentId: "ECE2022032",
-      department: "Electronics & Communication",
-      year: "2nd Year",
-      phone: "+1 (555) 456-7890",
-      avatar: "/placeholder.svg?height=40&width=40",
-      hackathonsParticipated: 2,
-      hackathonsWon: 0,
-      totalPayments: 110,
-      pendingPayments: 60,
-      currentTeam: "IoT Innovators",
-      currentHackathon: "IoT Solutions Challenge",
-      skills: ["Arduino", "Raspberry Pi", "C++", "IoT"],
-      achievements: ["Best Hardware Implementation"],
-      registrationDate: "2024-01-12",
-      lastActive: "2024-01-15",
-      paymentStatus: "Partial",
-      progressScore: 68,
-    },
-  ])
-
-  const [selectedStudent, setSelectedStudent] = useState<any>(null)
+  const [students, setStudents] = useState<Student[]>([])
+  const [filteredStudents, setFilteredStudents] = useState<Student[]>([])
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [yearFilter, setYearFilter] = useState("all")
   const [paymentFilter, setPaymentFilter] = useState("all")
+  const { toast } = useToast()
 
-  const filteredStudents = students.filter((student) => {
-    const matchesSearch =
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.studentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.email.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesDepartment = departmentFilter === "all" || student.department === departmentFilter
-    const matchesYear = yearFilter === "all" || student.year === yearFilter
-    const matchesPayment = paymentFilter === "all" || student.paymentStatus === paymentFilter
+  useEffect(() => {
+    fetchStudents()
+  }, [])
 
-    return matchesSearch && matchesDepartment && matchesYear && matchesPayment
-  })
+  useEffect(() => {
+    filterStudents()
+  }, [students, searchTerm, departmentFilter, yearFilter, paymentFilter])
+
+  const fetchStudents = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/students/history")
+      if (response.ok) {
+        const data = await response.json()
+        setStudents(data.data || [])
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to fetch student data",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch student data",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filterStudents = () => {
+    let filtered = students
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(student => 
+        student.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.email.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // Department filter
+    if (departmentFilter !== "all") {
+      filtered = filtered.filter(student => student.branch === departmentFilter)
+    }
+
+    // Year filter
+    if (yearFilter !== "all") {
+      filtered = filtered.filter(student => student.year === yearFilter)
+    }
+
+    // Payment filter
+    if (paymentFilter !== "all") {
+      if (paymentFilter === "paid") {
+        filtered = filtered.filter(student => student.totalPending === 0 && student.totalPaid > 0)
+      } else if (paymentFilter === "pending") {
+        filtered = filtered.filter(student => student.totalPending > 0)
+      } else if (paymentFilter === "none") {
+        filtered = filtered.filter(student => student.totalPaid === 0)
+      }
+    }
+
+    setFilteredStudents(filtered)
+  }
+
+  const getPaymentStatus = (student: Student) => {
+    if (student.totalPending === 0 && student.totalPaid > 0) return "Paid"
+    if (student.totalPending > 0 && student.totalPaid > 0) return "Partial"
+    if (student.totalPending > 0 && student.totalPaid === 0) return "Pending"
+    return "None"
+  }
 
   const getPaymentStatusColor = (status: string) => {
     switch (status) {
@@ -136,11 +140,57 @@ export default function FacultyStudentsPage() {
     }
   }
 
+  const exportStudentData = () => {
+    const csvData = filteredStudents.map(student => ({
+      'Name': student.username,
+      'Email': student.email,
+      'Branch': student.branch || 'N/A',
+      'Year': student.year || 'N/A',
+      'Total Registrations': student.totalRegistrations,
+      'Total Paid': student.totalPaid,
+      'Total Pending': student.totalPending,
+      'Hackathons Completed': student.hackathonsCompleted,
+      'Average Performance': student.averagePerformance,
+      'Payment Status': getPaymentStatus(student)
+    }))
+
+    const csvString = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvString], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `faculty-students-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+  }
+
   const stats = {
     totalStudents: students.length,
-    activeStudents: students.filter((s) => s.currentHackathon).length,
-    paidStudents: students.filter((s) => s.paymentStatus === "Paid").length,
-    pendingPayments: students.filter((s) => s.paymentStatus === "Pending" || s.paymentStatus === "Partial").length,
+    activeStudents: students.filter(s => s.totalRegistrations > 0).length,
+    paidStudents: students.filter(s => getPaymentStatus(s) === "Paid").length,
+    pendingPayments: students.filter(s => s.totalPending > 0).length,
+  }
+
+  const departments = Array.from(new Set(students.map(s => s.branch).filter(Boolean)))
+  const years = Array.from(new Set(students.map(s => s.year).filter(Boolean)))
+
+  if (loading) {
+    return (
+      <DashboardLayout userRole="faculty">
+        <div className="space-y-6 animate-pulse">
+          <div className="h-8 bg-gray-300 rounded w-1/4"></div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
+            ))}
+          </div>
+          <div className="h-64 bg-gray-200 rounded-lg"></div>
+        </div>
+      </DashboardLayout>
+    )
   }
 
   return (
@@ -152,6 +202,10 @@ export default function FacultyStudentsPage() {
             <h1 className="text-3xl font-bold text-gray-900">Student Management</h1>
             <p className="text-gray-600">Monitor student registrations, payments, and progress</p>
           </div>
+          <Button onClick={exportStudentData}>
+            <Download className="mr-2 h-4 w-4" />
+            Export Data
+          </Button>
         </div>
 
         {/* Stats */}
@@ -217,44 +271,54 @@ export default function FacultyStudentsPage() {
                   className="pl-8"
                 />
               </div>
+              
               <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Department" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Departments</SelectItem>
-                  <SelectItem value="Computer Science">Computer Science</SelectItem>
-                  <SelectItem value="Information Technology">Information Technology</SelectItem>
-                  <SelectItem value="Electronics & Communication">Electronics & Communication</SelectItem>
-                  <SelectItem value="Mechanical Engineering">Mechanical Engineering</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+
               <Select value={yearFilter} onValueChange={setYearFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Year" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Years</SelectItem>
-                  <SelectItem value="1st Year">1st Year</SelectItem>
-                  <SelectItem value="2nd Year">2nd Year</SelectItem>
-                  <SelectItem value="3rd Year">3rd Year</SelectItem>
-                  <SelectItem value="4th Year">4th Year</SelectItem>
+                  {years.map((year) => (
+                    <SelectItem key={year} value={year}>{year}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+
               <Select value={paymentFilter} onValueChange={setPaymentFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Payment Status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Paid">Paid</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Partial">Partial</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="none">No Payment</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline">
+
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setSearchTerm("")
+                  setDepartmentFilter("all")
+                  setYearFilter("all")
+                  setPaymentFilter("all")
+                }}
+              >
                 <Filter className="mr-2 h-4 w-4" />
-                Export Data
+                Clear Filters
               </Button>
             </div>
           </CardContent>
@@ -262,73 +326,68 @@ export default function FacultyStudentsPage() {
 
         {/* Students List */}
         <div className="grid gap-4">
-          {filteredStudents.map((student) => (
-            <Card key={student.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex flex-wrap items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={student.avatar || "/placeholder.svg"} />
-                      <AvatarFallback>
-                        {student.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h3 className="font-semibold text-lg">{student.name}</h3>
-                      <p className="text-gray-600">
-                        {student.studentId} • {student.department}
-                      </p>
-                      <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
-                        <span>{student.year}</span>
-                        <span>•</span>
-                        <span>{student.email}</span>
+          {filteredStudents.map((student) => {
+            const paymentStatus = getPaymentStatus(student)
+            return (
+              <Card key={student._id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex flex-wrap items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={student.image || "/placeholder.svg"} />
+                        <AvatarFallback>
+                          {student.username.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h3 className="font-semibold text-lg">{student.username}</h3>
+                        <p className="text-gray-600">
+                          {student.branch || 'N/A'} • {student.year || 'N/A'}
+                        </p>
+                        <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                          <span>{student.email}</span>
+                        </div>
                       </div>
                     </div>
+
+                    <div className="flex items-center gap-6">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-blue-600">{student.totalRegistrations}</p>
+                        <p className="text-xs text-gray-600">Registrations</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-green-600">{student.hackathonsCompleted}</p>
+                        <p className="text-xs text-gray-600">Completed</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-purple-600">${student.totalPaid}</p>
+                        <p className="text-xs text-gray-600">Total Paid</p>
+                      </div>
+                      <div className="text-center">
+                        <Badge className={getPaymentStatusColor(paymentStatus)}>{paymentStatus}</Badge>
+                        {student.totalPending > 0 && (
+                          <p className="text-xs text-red-600 mt-1">${student.totalPending} pending</p>
+                        )}
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedStudent(student)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-6">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-blue-600">{student.hackathonsParticipated}</p>
-                      <p className="text-xs text-gray-600">Hackathons</p>
+                  {student.averagePerformance > 0 && (
+                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">Performance Score</span>
+                        <span className="text-sm text-gray-600">{student.averagePerformance}%</span>
+                      </div>
+                      <Progress value={student.averagePerformance} className="h-2" />
                     </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-green-600">{student.hackathonsWon}</p>
-                      <p className="text-xs text-gray-600">Wins</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-purple-600">${student.totalPayments}</p>
-                      <p className="text-xs text-gray-600">Total Paid</p>
-                    </div>
-                    <div className="text-center">
-                      <Badge className={getPaymentStatusColor(student.paymentStatus)}>{student.paymentStatus}</Badge>
-                      {student.pendingPayments > 0 && (
-                        <p className="text-xs text-red-600 mt-1">${student.pendingPayments} pending</p>
-                      )}
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedStudent(student)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {student.currentHackathon && (
-                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium">Current Participation</span>
-                      <span className="text-sm text-gray-600">{student.progressScore}% progress</span>
-                    </div>
-                    <p className="text-sm text-gray-700 mb-2">
-                      <strong>{student.currentHackathon}</strong> • Team: {student.currentTeam}
-                    </p>
-                    <Progress value={student.progressScore} className="h-2" />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
 
         {filteredStudents.length === 0 && (
@@ -347,27 +406,23 @@ export default function FacultyStudentsPage() {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={selectedStudent.avatar || "/placeholder.svg"} />
+                    <AvatarImage src={selectedStudent.image || "/placeholder.svg"} />
                     <AvatarFallback>
-                      {selectedStudent.name
-                        .split(" ")
-                        .map((n: string) => n[0])
-                        .join("")}
+                      {selectedStudent.username.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  {selectedStudent.name}
+                  {selectedStudent.username}
                 </DialogTitle>
                 <DialogDescription>
-                  {selectedStudent.studentId} • {selectedStudent.department} • {selectedStudent.year}
+                  {selectedStudent.branch} • {selectedStudent.year}
                 </DialogDescription>
               </DialogHeader>
 
               <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="hackathons">Hackathons</TabsTrigger>
                   <TabsTrigger value="payments">Payments</TabsTrigger>
-                  <TabsTrigger value="achievements">Achievements</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-4">
@@ -382,13 +437,9 @@ export default function FacultyStudentsPage() {
                           <span className="text-sm">{selectedStudent.email}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm">{selectedStudent.phone}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
                           <GraduationCap className="h-4 w-4 text-gray-500" />
                           <span className="text-sm">
-                            {selectedStudent.department} - {selectedStudent.year}
+                            {selectedStudent.branch} - {selectedStudent.year}
                           </span>
                         </div>
                       </CardContent>
@@ -396,92 +447,49 @@ export default function FacultyStudentsPage() {
 
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-lg">Activity Summary</CardTitle>
+                        <CardTitle className="text-lg">Performance Metrics</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-2">
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Registration Date:</span>
-                          <span>{selectedStudent.registrationDate}</span>
+                          <span className="text-gray-600">Total Registrations:</span>
+                          <span className="font-medium">{selectedStudent.totalRegistrations}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Last Active:</span>
-                          <span>{selectedStudent.lastActive}</span>
+                          <span className="text-gray-600">Completed:</span>
+                          <span className="font-medium">{selectedStudent.hackathonsCompleted}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Progress Score:</span>
-                          <span className="font-medium">{selectedStudent.progressScore}%</span>
+                          <span className="text-gray-600">Performance Score:</span>
+                          <span className="font-medium">{selectedStudent.averagePerformance}%</span>
                         </div>
                       </CardContent>
                     </Card>
                   </div>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Skills</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedStudent.skills.map((skill: string, index: number) => (
-                          <Badge key={index} variant="outline">
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {selectedStudent.currentHackathon && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Current Participation</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Hackathon:</span>
-                            <span className="font-medium">{selectedStudent.currentHackathon}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Team:</span>
-                            <span className="font-medium">{selectedStudent.currentTeam}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Progress:</span>
-                            <span className="font-medium">{selectedStudent.progressScore}%</span>
-                          </div>
-                          <Progress value={selectedStudent.progressScore} className="h-2 mt-2" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
                 </TabsContent>
 
                 <TabsContent value="hackathons">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Hackathon History</CardTitle>
+                      <CardTitle>Registration History</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                          <div className="p-4 bg-blue-50 rounded-lg">
-                            <p className="text-2xl font-bold text-blue-600">{selectedStudent.hackathonsParticipated}</p>
-                            <p className="text-sm text-gray-600">Total Participated</p>
+                      <div className="space-y-3">
+                        {selectedStudent.registrations.map((reg, index) => (
+                          <div key={index} className="flex justify-between items-center p-3 border rounded-lg">
+                            <div>
+                              <p className="font-medium">{reg.hackathon.title}</p>
+                              <p className="text-sm text-gray-600">
+                                Registered: {new Date(reg.registrationDate).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium">${reg.hackathon.registrationFee}</p>
+                              <Badge className={getPaymentStatusColor(reg.paymentStatus)}>
+                                {reg.paymentStatus}
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="p-4 bg-green-50 rounded-lg">
-                            <p className="text-2xl font-bold text-green-600">{selectedStudent.hackathonsWon}</p>
-                            <p className="text-sm text-gray-600">Hackathons Won</p>
-                          </div>
-                          <div className="p-4 bg-purple-50 rounded-lg">
-                            <p className="text-2xl font-bold text-purple-600">
-                              {Math.round(
-                                (selectedStudent.hackathonsWon / selectedStudent.hackathonsParticipated) * 100,
-                              )}
-                              %
-                            </p>
-                            <p className="text-sm text-gray-600">Success Rate</p>
-                          </div>
-                        </div>
+                        ))}
                       </div>
                     </CardContent>
                   </Card>
@@ -490,44 +498,26 @@ export default function FacultyStudentsPage() {
                 <TabsContent value="payments">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Payment History</CardTitle>
+                      <CardTitle>Payment Summary</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div className="p-4 bg-green-50 rounded-lg">
-                            <p className="text-2xl font-bold text-green-600">${selectedStudent.totalPayments}</p>
+                            <p className="text-2xl font-bold text-green-600">${selectedStudent.totalPaid}</p>
                             <p className="text-sm text-gray-600">Total Payments Made</p>
                           </div>
                           <div className="p-4 bg-red-50 rounded-lg">
-                            <p className="text-2xl font-bold text-red-600">${selectedStudent.pendingPayments}</p>
+                            <p className="text-2xl font-bold text-red-600">${selectedStudent.totalPending}</p>
                             <p className="text-sm text-gray-600">Pending Payments</p>
                           </div>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-gray-600">Payment Status:</span>
-                          <Badge className={getPaymentStatusColor(selectedStudent.paymentStatus)}>
-                            {selectedStudent.paymentStatus}
+                          <Badge className={getPaymentStatusColor(getPaymentStatus(selectedStudent))}>
+                            {getPaymentStatus(selectedStudent)}
                           </Badge>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="achievements">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Achievements & Awards</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {selectedStudent.achievements.map((achievement: string, index: number) => (
-                          <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
-                            <Trophy className="h-5 w-5 text-yellow-500" />
-                            <span className="font-medium">{achievement}</span>
-                          </div>
-                        ))}
                       </div>
                     </CardContent>
                   </Card>

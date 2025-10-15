@@ -15,19 +15,19 @@ import { useToast } from "@/hooks/use-toast"
 interface PaymentData {
   _id: string
   user: {
-    name: string
+    username: string
     email: string
-    department: string
-    studentId: string
+    branch?: string
   }
   hackathon: {
     title: string
     registrationFee: number
   }
   amount: number
-  paymentStatus: string
-  paymentMethod: string
+  status: string
+  method: string
   transactionId: string
+  paymentDate: string
   createdAt: string
   updatedAt: string
 }
@@ -60,7 +60,7 @@ export default function FacultyPaymentsPage() {
   const fetchPayments = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/hackathon-registration')
+      const response = await fetch('/api/payments')
       const result = await response.json()
 
       if (result.success) {
@@ -87,15 +87,15 @@ export default function FacultyPaymentsPage() {
 
   const calculateStats = (paymentData: PaymentData[]) => {
     const totalRevenue = paymentData
-      .filter(p => p.paymentStatus === 'Paid')
+      .filter(p => p.status === 'Completed')
       .reduce((sum, p) => sum + p.amount, 0)
     
     const pendingAmount = paymentData
-      .filter(p => p.paymentStatus === 'Pending')
+      .filter(p => p.status === 'Pending')
       .reduce((sum, p) => sum + p.amount, 0)
     
-    const paidCount = paymentData.filter(p => p.paymentStatus === 'Paid').length
-    const pendingCount = paymentData.filter(p => p.paymentStatus === 'Pending').length
+    const paidCount = paymentData.filter(p => p.status === 'Completed').length
+    const pendingCount = paymentData.filter(p => p.status === 'Pending').length
     const collectionRate = paymentData.length > 0 ? (paidCount / paymentData.length) * 100 : 0
 
     setStats({
@@ -112,19 +112,18 @@ export default function FacultyPaymentsPage() {
 
     if (searchTerm) {
       filtered = filtered.filter(payment =>
-        payment.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        payment.user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
         payment.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.user.studentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
         payment.hackathon.title.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
     if (statusFilter !== "all") {
-      filtered = filtered.filter(payment => payment.paymentStatus === statusFilter)
+      filtered = filtered.filter(payment => payment.status === statusFilter)
     }
 
     if (departmentFilter !== "all") {
-      filtered = filtered.filter(payment => payment.user.department === departmentFilter)
+      filtered = filtered.filter(payment => payment.user.branch === departmentFilter)
     }
 
     setFilteredPayments(filtered)
@@ -132,7 +131,7 @@ export default function FacultyPaymentsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Paid":
+      case "Completed":
         return "bg-green-100 text-green-800"
       case "Pending":
         return "bg-yellow-100 text-yellow-800"
@@ -145,7 +144,7 @@ export default function FacultyPaymentsPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "Paid":
+      case "Completed":
         return <CheckCircle className="h-4 w-4 text-green-500" />
       case "Pending":
         return <Clock className="h-4 w-4 text-yellow-500" />
@@ -266,7 +265,7 @@ export default function FacultyPaymentsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Paid">Paid</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
                   <SelectItem value="Failed">Failed</SelectItem>
                 </SelectContent>
@@ -388,9 +387,9 @@ export default function FacultyPaymentsPage() {
                         <tr key={payment._id} className="border-b hover:bg-gray-50">
                           <td className="p-4">
                             <div>
-                              <p className="font-medium">{payment.user.name}</p>
+                              <p className="font-medium">{payment.user.username}</p>
                               <p className="text-sm text-gray-600">{payment.user.email}</p>
-                              <p className="text-xs text-gray-500">{payment.user.department}</p>
+                              <p className="text-xs text-gray-500">{payment.user.branch}</p>
                             </div>
                           </td>
                           <td className="p-4">
@@ -401,14 +400,14 @@ export default function FacultyPaymentsPage() {
                           </td>
                           <td className="p-4">
                             <div className="flex items-center gap-2">
-                              {getStatusIcon(payment.paymentStatus)}
-                              <Badge className={getStatusColor(payment.paymentStatus)}>
-                                {payment.paymentStatus}
+                              {getStatusIcon(payment.status)}
+                              <Badge className={getStatusColor(payment.status)}>
+                                {payment.status}
                               </Badge>
                             </div>
                           </td>
                           <td className="p-4">
-                            <p className="text-sm">{new Date(payment.createdAt).toLocaleDateString()}</p>
+                            <p className="text-sm">{new Date(payment.paymentDate || payment.createdAt).toLocaleDateString()}</p>
                           </td>
                           <td className="p-4">
                             <Button variant="ghost" size="sm">
@@ -434,8 +433,8 @@ export default function FacultyPaymentsPage() {
                 <CardContent>
                   <div className="space-y-4">
                     {['Computer Science', 'Electronics & Communication', 'Information Technology', 'Mechanical Engineering'].map((dept) => {
-                      const deptPayments = filteredPayments.filter(p => p.user.department === dept)
-                      const paidPayments = deptPayments.filter(p => p.paymentStatus === 'Paid')
+                      const deptPayments = filteredPayments.filter(p => p.user.branch === dept)
+                      const paidPayments = deptPayments.filter(p => p.status === 'Completed')
                       const rate = deptPayments.length > 0 ? (paidPayments.length / deptPayments.length) * 100 : 0
                       
                       return (
@@ -460,7 +459,7 @@ export default function FacultyPaymentsPage() {
                 <CardContent>
                   <div className="space-y-4">
                     {['PayPal', 'Credit Card', 'Bank Transfer'].map((method) => {
-                      const methodPayments = filteredPayments.filter(p => p.paymentMethod === method)
+                      const methodPayments = filteredPayments.filter(p => p.method === method)
                       const percentage = filteredPayments.length > 0 ? (methodPayments.length / filteredPayments.length) * 100 : 0
                       
                       return (
