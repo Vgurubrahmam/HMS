@@ -122,6 +122,19 @@ useEffect(() => {
     if (token) {
       try {
         const decoded: any = jwtDecode(token)
+        
+        // Check if token is expired
+        const currentTime = Date.now() / 1000 // Convert to seconds
+        if (decoded.exp && decoded.exp < currentTime) {
+          // Token is expired, clear storage and redirect
+          console.log("Token expired, logging out user")
+          localStorage.removeItem("token")
+          localStorage.removeItem("userProfile")
+          localStorage.removeItem("googleUserProfile")
+          router.push("/auth/login")
+          return
+        }
+        
         if (decoded) {
           const username = decoded.username || initialUserName || "User";
           setUserName(username);
@@ -157,6 +170,11 @@ useEffect(() => {
         }
       } catch (err) {
         console.error("Failed to decode token:", err)
+        // If token is invalid, clear it and redirect
+        localStorage.removeItem("token")
+        localStorage.removeItem("userProfile")
+        localStorage.removeItem("googleUserProfile")
+        router.push("/auth/login")
       }
     }
   }, [])

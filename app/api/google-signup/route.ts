@@ -98,7 +98,7 @@ export async function POST(req: Request): Promise<Response> {
           role: user.role,
         },
         secretkey,
-        { expiresIn: "2h" },
+        { expiresIn: "1h" },
       )
 
       return NextResponse.json({
@@ -172,7 +172,7 @@ export async function POST(req: Request): Promise<Response> {
           role: user.role,
         },
         secretkey,
-        { expiresIn: "2h" },
+        { expiresIn: "1h" },
       )
 
       return NextResponse.json({

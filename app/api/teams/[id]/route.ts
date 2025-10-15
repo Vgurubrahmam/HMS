@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import mongoose from "mongoose"
 import db from "@/lib/db"
 import Team from "@/lib/models/Team"
+import Profile from "@/lib/models/Profile"
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -11,10 +12,15 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       .populate("hackathon", "title description startDate endDate")
       .populate("members", "username name email role skills image")
       .populate("teamLead", "username name email role image")
-      .populate("mentor", "username name email expertise image")
 
     if (!team) {
       return NextResponse.json({ success: false, error: "Team not found" }, { status: 404 })
+    }
+
+    // Manually populate mentor data from Profile collection
+    if (team.mentor) {
+      const mentorProfile = await Profile.findById(team.mentor).select("username email expertise department");
+      team.mentor = mentorProfile;
     }
 
     return NextResponse.json({
@@ -53,12 +59,17 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     ).populate([
       { path: "hackathon", select: "title description startDate endDate" },
       { path: "members", select: "username name email role skills image" },
-      { path: "teamLead", select: "username name email role image" },
-      { path: "mentor", select: "username name email expertise image" },
+      { path: "teamLead", select: "username name email role image" }
     ])
 
     if (!team) {
       return NextResponse.json({ success: false, error: "Team not found" }, { status: 404 })
+    }
+
+    // Manually populate mentor data from Profile collection
+    if (team.mentor) {
+      const mentorProfile = await Profile.findById(team.mentor).select("username email expertise department");
+      team.mentor = mentorProfile;
     }
 
     console.log("Team updated successfully:", team.name)

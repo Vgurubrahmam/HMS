@@ -189,19 +189,7 @@ export default function CoordinatorDashboard() {
           <div>
             <h1 className="text-3xl font-bold">Coordinator Dashboard</h1>
             <p className="text-gray-600">Manage hackathons, teams, and participants</p>
-            {isRefreshing && (
-              <div className="flex items-center gap-2 mt-1">
-                <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
-                <span className="text-xs text-blue-600">Refreshing data...</span>
-              </div>
-            )}
-            {!isRefreshing && (
-              <div className="mt-1">
-                <span className="text-xs text-gray-500">
-                  Registrations: {totalRegistrations} | Paid: {paidRegistrations} | Revenue: ₹{totalRevenue}
-                </span>
-              </div>
-            )}
+            
           </div>
           <div className="flex gap-2">
             

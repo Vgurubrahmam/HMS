@@ -320,11 +320,6 @@ useEffect(()=>{
 
       if (res.ok && data.success && data.data) { 
         const filteredTeams = Array.isArray(data.data) ? data.data.filter((team: any) => team && team._id) : [];
-        console.log('Filtered teams:', filteredTeams);
-        console.log('First team:', filteredTeams[0]);
-        console.log('First team members:', filteredTeams[0]?.members);
-        console.log('First team members type:', typeof filteredTeams[0]?.members);
-        console.log('First team member example:', filteredTeams[0]?.members?.[0]);
         
         setTeams(filteredTeams);
         setPagination(prev => ({

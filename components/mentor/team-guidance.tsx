@@ -130,7 +130,12 @@ export function MentorTeamGuidance() {
       const response = await fetch(`/api/mentors/${userData?.id}/teams`)
       if (response.ok) {
         const data = await response.json()
-        setTeams(data.data || [])
+        // Transform the data to match the interface
+        const transformedTeams = (data.data || []).map((team: any) => ({
+          ...team,
+          progress: team.progress?.overall || 0
+        }))
+        setTeams(transformedTeams)
       }
     } catch (error) {
       toast({
@@ -334,7 +339,7 @@ export function MentorTeamGuidance() {
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="text-xl">{team.name}</CardTitle>
-                    <CardDescription>{team.hackathon.title}</CardDescription>
+                    <CardDescription>{team.hackathon?.title || 'Unknown Hackathon'}</CardDescription>
                     <div className="flex items-center gap-2 mt-2">
                       <Badge className={getPhaseColor(team.currentPhase)}>
                         {team.currentPhase}
@@ -528,30 +533,38 @@ export function MentorTeamGuidance() {
 
                   {/* Team Members */}
                   <div>
-                    <h4 className="font-medium mb-2">Team Members ({team.members.length})</h4>
+                    <h4 className="font-medium mb-2">Team Members ({team.members?.length || 0})</h4>
                     <div className="flex flex-wrap gap-2">
-                      {team.members.map((member) => (
-                        <div key={member._id} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
-                          <Avatar className="h-6 w-6">
-                            <AvatarImage src={member.image} />
-                            <AvatarFallback>{member.username.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm">{member.username}</span>
-                        </div>
-                      ))}
+                      {team.members && team.members.length > 0 ? (
+                        team.members.map((member) => (
+                          <div key={member._id} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={member.image} />
+                              <AvatarFallback>{member.username?.charAt(0) || 'M'}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm">{member.username}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">No team members</p>
+                      )}
                     </div>
                   </div>
 
                   {/* Project Info */}
                   <div>
-                    <h4 className="font-medium mb-2">Project: {team.project.title}</h4>
-                    <p className="text-sm text-gray-600 mb-2">{team.project.description}</p>
+                    <h4 className="font-medium mb-2">Project: {team.project?.title || 'Untitled Project'}</h4>
+                    <p className="text-sm text-gray-600 mb-2">{team.project?.description || 'No description available'}</p>
                     <div className="flex flex-wrap gap-2">
-                      {team.project.techStack.map((tech, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {tech}
-                        </Badge>
-                      ))}
+                      {team.project?.techStack && team.project.techStack.length > 0 ? (
+                        team.project.techStack.map((tech, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {tech}
+                          </Badge>
+                        ))
+                      ) : (
+                        <Badge variant="outline" className="text-xs">No tech stack specified</Badge>
+                      )}
                     </div>
                   </div>
 
@@ -559,33 +572,37 @@ export function MentorTeamGuidance() {
                   <div>
                     <h4 className="font-medium mb-2">Recent Milestones</h4>
                     <div className="space-y-2">
-                      {team.milestones.slice(0, 3).map((milestone) => (
-                        <div key={milestone._id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                          <div className="flex items-center gap-2">
-                            {getMilestoneIcon(milestone.status)}
-                            <span className="text-sm">{milestone.title}</span>
+                      {team.milestones && team.milestones.length > 0 ? (
+                        team.milestones.slice(0, 3).map((milestone) => (
+                          <div key={milestone._id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                            <div className="flex items-center gap-2">
+                              {getMilestoneIcon(milestone.status)}
+                              <span className="text-sm">{milestone.title}</span>
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              Due: {new Date(milestone.dueDate).toLocaleDateString()}
+                            </span>
                           </div>
-                          <span className="text-xs text-gray-500">
-                            Due: {new Date(milestone.dueDate).toLocaleDateString()}
-                          </span>
-                        </div>
-                      ))}
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">No milestones available</p>
+                      )}
                     </div>
                   </div>
 
                   {/* Recent Feedback */}
-                  {team.feedback.length > 0 && (
+                  {team.feedback && team.feedback.length > 0 && (
                     <div>
                       <h4 className="font-medium mb-2">Latest Feedback</h4>
                       <div className="bg-blue-50 p-3 rounded-lg">
                         <div className="flex items-center gap-2 mb-1">
                           <Star className="h-4 w-4 text-yellow-500" />
-                          <span className="text-sm font-medium">Rating: {team.feedback[0].rating}/5</span>
-                          <Badge variant="outline" className="text-xs">{team.feedback[0].type}</Badge>
+                          <span className="text-sm font-medium">Rating: {team.feedback[0]?.rating || 'N/A'}/5</span>
+                          <Badge variant="outline" className="text-xs">{team.feedback[0]?.type || 'General'}</Badge>
                         </div>
-                        <p className="text-sm">{team.feedback[0].message}</p>
+                        <p className="text-sm">{team.feedback[0]?.message || 'No feedback available'}</p>
                         <p className="text-xs text-gray-500 mt-1">
-                          {new Date(team.feedback[0].date).toLocaleDateString()}
+                          {team.feedback[0]?.date ? new Date(team.feedback[0].date).toLocaleDateString() : 'No date'}
                         </p>
                       </div>
                     </div>
@@ -661,7 +678,7 @@ export function MentorTeamGuidance() {
                   <CardTitle className="text-lg">{team.name}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {team.feedback.length > 0 ? (
+                  {team.feedback && team.feedback.length > 0 ? (
                     <div className="space-y-3">
                       {team.feedback.map((feedback) => (
                         <div key={feedback._id} className="p-3 border rounded-lg">

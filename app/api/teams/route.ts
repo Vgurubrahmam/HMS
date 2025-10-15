@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import db from "@/lib/db"
 import Team from "@/lib/models/Team"
 import UserModel from "@/lib/models/User"
+import Profile from "@/lib/models/Profile"
 import Hackathon from "@/lib/models/Hackathon"
 import mongoose from "mongoose"
 
@@ -15,6 +16,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const page = Number.parseInt(searchParams.get("page") || "1");
     const limit = Number.parseInt(searchParams.get("limit") || "10");
+
 
     const query: any = {};
 
@@ -32,14 +34,23 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * limit;
 
+
     const teams = await Team.find(query)
       .populate("hackathon", "title description startDate endDate")
       .populate("members", "username name email role skills image")
       .populate("teamLead", "username name email role image")
-      .populate("mentor", "username name email expertise image")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
+
+
+    // Manually populate mentor data from Profile collection
+    for (let team of teams) {
+      if (team.mentor) {
+        const mentorProfile = await Profile.findById(team.mentor).select("username email expertise department");
+        team.mentor = mentorProfile;
+      }
+    }
 
     const total = await Team.countDocuments(query);
 
@@ -64,7 +75,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await db()
-    console.log("Creating team");
     
     // Explicitly register the User model to ensure it is accessible
     if (!mongoose.models.users) {

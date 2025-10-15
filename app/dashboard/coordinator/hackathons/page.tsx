@@ -20,66 +20,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { Calendar, Users, Plus, Edit, Trash2, Eye, MapPin, DollarSign, IndianRupee } from "lucide-react"
+import { Calendar, Users, Plus, Edit, Trash2, Eye, MapPin, DollarSign, IndianRupee, RefreshCw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function CoordinatorHackathonsPage() {
-  const [hackathons, setHackathons] = useState([
-    {
-      id: 1,
-      title: "AI Innovation Challenge 2024",
-      description: "Build innovative AI solutions for real-world problems",
-      status: "Active",
-      startDate: "2024-01-15",
-      endDate: "2024-01-17",
-      registrationDeadline: "2024-01-17",
-      registrationFee: 50,
-      maxParticipants: 200,
-      currentParticipants: 156,
-      venue: "Tech Hub Building A",
-      prizes: ["$5000", "$3000", "$1000"],
-      categories: ["AI/ML", "Computer Vision", "NLP"],
-      mentorAssigned: 12,
-      teamsFormed: 39,
-    },
-    {
-      id: 2,
-      title: "Web3 Developer Summit",
-      description: "Explore the future of decentralized applications",
-      status: "Registration Open",
-      startDate: "2024-01-22",
-      endDate: "2024-01-24",
-      registrationDeadline: "2024-01-17",
-
-      registrationFee: 75,
-      maxParticipants: 150,
-      currentParticipants: 89,
-      venue: "Innovation Center",
-      prizes: ["$8000", "$5000", "$2000"],
-      categories: ["Blockchain", "DeFi", "NFTs"],
-      mentorAssigned: 8,
-      teamsFormed: 22,
-    },
-    {
-      id: 3,
-      title: "Mobile App Hackathon",
-      description: "Create the next generation of mobile applications",
-      status: "Planning",
-      startDate: "2024-02-01",
-      endDate: "2024-02-03",
-      registrationDeadline: "2024-01-17",
-
-      registrationFee: 60,
-      maxParticipants: 180,
-      currentParticipants: 0,
-      venue: "Campus Main Hall",
-      prizes: ["$6000", "$4000", "$1500"],
-      categories: ["iOS", "Android", "Cross-platform"],
-      mentorAssigned: 0,
-      teamsFormed: 0,
-    },
-  ])
-
+  const [hackathons, setHackathons] = useState<any[]>([])
+  const [hackathonStats, setHackathonStats] = useState<{ [key: string]: any }>({})
   const [selectedHackathon, setSelectedHackathon] = useState<any>(null)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -95,15 +41,14 @@ export default function CoordinatorHackathonsPage() {
     venue: "",
     categories: "",
     prizes: "",
-    currentParticipants: "",
-    mentorAssigned: "",
-    teamsFormed: "",
     status: "Planning",
   })
 
   const { toast } = useToast()
+  
   interface Hackathon {
     id: number | string
+    _id?: string
     title: string
     description: string
     status: string
@@ -112,12 +57,9 @@ export default function CoordinatorHackathonsPage() {
     registrationFee: number
     registrationDeadline: string
     maxParticipants: number
-    currentParticipants: number
     venue: string
     prizes: string[]
     categories: string[]
-    mentorAssigned: number
-    teamsFormed: number
   }
 
   interface NewHackathon {
@@ -131,11 +73,62 @@ export default function CoordinatorHackathonsPage() {
     venue: string
     categories: string
     prizes: string
-    currentParticipants: string
-    mentorAssigned: string
-    teamsFormed: string
     status: string
   }
+
+  // Fetch dynamic stats for hackathons
+  const fetchHackathonStats = async () => {
+    if (!hackathons || hackathons.length === 0) {
+      console.log("No hackathons to fetch stats for");
+      return;
+    }
+
+    try {
+      const statsPromises = hackathons.map(async (hackathon: any) => {
+        const hackathonId = hackathon._id || hackathon.id;
+        
+        if (!hackathonId) {
+          console.error("Hackathon missing ID:", hackathon);
+          return { hackathonId: 'unknown', stats: { teamsCount: 0, participantsCount: 0, mentorsCount: 0 } };
+        }
+        
+        try {
+          const response = await fetch(`/api/hackathons/${hackathonId}/stats`);
+          if (response.ok) {
+            const data = await response.json();
+            return { hackathonId, stats: data.data };
+          } else {
+            const errorText = await response.text();
+            console.error("Failed to fetch stats for", hackathonId, response.status, errorText);
+            return { hackathonId, stats: { teamsCount: 0, participantsCount: 0, mentorsCount: 0 } };
+          }
+        } catch (err) {
+          return { hackathonId, stats: { teamsCount: 0, participantsCount: 0, mentorsCount: 0 } };
+        }
+      });
+
+      const results = await Promise.all(statsPromises);
+      const statsMap: { [key: string]: any } = {};
+      
+      results.forEach(({ hackathonId, stats }) => {
+        statsMap[hackathonId] = stats;
+      });
+
+      setHackathonStats(statsMap);
+    } catch (error) {
+      console.error("Error fetching hackathon stats:", error);
+    }
+  };
+
+  // Get dynamic stats for a hackathon
+  const getHackathonStats = (hackathon: any) => {
+    const hackathonId = hackathon._id || hackathon.id;
+    return hackathonStats[hackathonId] || {
+      teamsCount: 0,
+      participantsCount: 0,
+      mentorsCount: 0
+    };
+  };
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -176,9 +169,7 @@ export default function CoordinatorHackathonsPage() {
         !newHackathon.maxParticipants ||
         !newHackathon.venue ||
         !newHackathon.categories ||
-        !newHackathon.prizes ||
-        !newHackathon.mentorAssigned ||
-        !newHackathon.teamsFormed
+        !newHackathon.prizes
       ) {
         toast({
           variant: "destructive",
@@ -195,7 +186,6 @@ export default function CoordinatorHackathonsPage() {
         description: newHackathon.description,
         startDate: newHackathon.startDate,
         endDate: newHackathon.endDate,
-
         registrationDeadline: newHackathon.registrationDeadline,
         registrationFee: Number.parseInt(newHackathon.registrationFee),
         maxParticipants: Number.parseInt(newHackathon.maxParticipants),
@@ -209,9 +199,6 @@ export default function CoordinatorHackathonsPage() {
           .map((p) => p.trim())
           .filter((p) => p),
         status: newHackathon.status || "Planning",
-        currentParticipants: Number.parseInt(newHackathon.currentParticipants) || 0,
-        mentorAssigned: Number.parseInt(newHackathon.mentorAssigned) || 0,
-        teamsFormed: Number.parseInt(newHackathon.teamsFormed) || 0,
       };
 
       const res = await fetch("/api/hackathons", {
@@ -254,13 +241,15 @@ export default function CoordinatorHackathonsPage() {
         venue: "",
         categories: "",
         prizes: "",
-        currentParticipants: "",
-        mentorAssigned: "",
-        teamsFormed: "",
         status: "Planning"
       });
 
       setIsCreateDialogOpen(false);
+
+      // Refresh stats after creating hackathon
+      setTimeout(() => {
+        fetchHackathonStats();
+      }, 1000);
 
       toast({
         title: "Hackathon Created",
@@ -290,15 +279,11 @@ export default function CoordinatorHackathonsPage() {
 
         if (res.ok) {
           setHackathons(data.data)
-          // toast({
-          //   title: "Success",
-          //   description: "Hackathons fetched successfully",
-          // })
         } else {
           toast({
             variant: "destructive",
             title: "Error",
-            description: data.message || "Error feteching hackthons"
+            description: data.message || "Error fetching hackthons"
           })
         }
 
@@ -307,14 +292,21 @@ export default function CoordinatorHackathonsPage() {
           variant: "destructive",
           title: "Error",
           description: error.message || "Something went wrong while fetching hackathons"
-
         })
       } finally {
         setLoading(false)
       }
     }
+    
     fetchHackathons()
   }, [])
+
+  // Fetch stats when hackathons change
+  useEffect(() => {
+    if (hackathons.length > 0) {
+      fetchHackathonStats()
+    }
+  }, [hackathons])
 
 
   const handleDeleteHackathon = async (id: string) => {
@@ -381,9 +373,7 @@ export default function CoordinatorHackathonsPage() {
         !updatedData.maxParticipants ||
         !updatedData.venue ||
         !updatedData.categories ||
-        !updatedData.prizes ||
-        !updatedData.mentorAssigned ||
-        !updatedData.teamsFormed
+        !updatedData.prizes
       ) {
         toast({
           variant: 'destructive',
@@ -412,9 +402,6 @@ export default function CoordinatorHackathonsPage() {
           .map((p) => p.trim())
           .filter((p) => p) || [],
         status: updatedData.status || 'Planning',
-        currentParticipants: Number.parseInt(updatedData.currentParticipants as string) || 0,
-        mentorAssigned: Number.parseInt(updatedData.mentorAssigned as string) || 0,
-        teamsFormed: Number.parseInt(updatedData.teamsFormed as string) || 0,
       };
 
       const res = await fetch(`/api/hackathons/${id}`, {
@@ -451,6 +438,12 @@ export default function CoordinatorHackathonsPage() {
 
       setIsEditDialogOpen(false);
       setEditingHackathonId(null);
+      
+      // Refresh stats after updating hackathon
+      setTimeout(() => {
+        fetchHackathonStats();
+      }, 1000);
+      
       toast({
         title: 'Hackathon Updated',
         description: data.message || 'Hackathon has been successfully updated.',
@@ -479,9 +472,6 @@ export default function CoordinatorHackathonsPage() {
     venue: '',
     categories: '',
     prizes: '',
-    currentParticipants: '',
-    mentorAssigned: '',
-    teamsFormed: '',
     status: 'Planning',
   });
 
@@ -511,9 +501,6 @@ export default function CoordinatorHackathonsPage() {
       venue: hackathon.venue || "",
       categories: hackathon.categories?.join(", ") || "",
       prizes: hackathon.prizes?.join(", ") || "",
-      currentParticipants: hackathon.currentParticipants?.toString() || "",
-      mentorAssigned: hackathon.mentorAssigned?.toString() || "",
-      teamsFormed: hackathon.teamsFormed?.toString() || "",
       status: hackathon.status || "Planning",
     });
 
@@ -528,14 +515,19 @@ export default function CoordinatorHackathonsPage() {
             <h1 className="text-3xl font-bold text-gray-900">Hackathon Management</h1>
             <p className="text-gray-600">Create, manage, and monitor all hackathon events</p>
           </div>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Hackathon
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={fetchHackathonStats} disabled={loading}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh Stats
+            </Button>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Hackathon
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Create New Hackathon</DialogTitle>
                 <DialogDescription>Fill in the details to create a new hackathon event</DialogDescription>
@@ -660,48 +652,6 @@ export default function CoordinatorHackathonsPage() {
 
 
 
-                  {/* Additional Fields with Defaults */}
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="currentParticipants">Current Participants</Label>
-                      <Input
-                        id="currentParticipants"
-                        type="number"
-                        value={newHackathon.currentParticipants}
-                        onChange={(e) =>
-                          setNewHackathon({
-                            ...newHackathon,
-                            currentParticipants: e.target.value,
-                          })
-                        }
-                        placeholder="0"
-                        min="0"
-                      />
-
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="mentorAssigned">Mentors Assigned</Label>
-                      <Input
-                        id="mentorAssigned"
-                        type="number"
-                        value={newHackathon.mentorAssigned}
-                        onChange={(e) => setNewHackathon({ ...newHackathon, mentorAssigned: e.target.value })}
-                        placeholder="0"
-                        min="0"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="teamsFormed">Teams Formed</Label>
-                      <Input
-                        id="teamsFormed"
-                        type="number"
-                        value={newHackathon.teamsFormed}
-                        onChange={(e) => setNewHackathon({ ...newHackathon, teamsFormed: e.target.value })}
-                        placeholder="0"
-                        min="0"
-                      />
-                    </div>
-                  </div>
                   {/* Categories and Prizes */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -742,12 +692,13 @@ export default function CoordinatorHackathonsPage() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Hackathons Grid */}
         <div className="grid gap-6">
           {hackathons.map((hackathon: any) => (
-            <Card key={hackathon.id} className="overflow-hidden">
+            <Card key={hackathon._id || hackathon.id} className="overflow-hidden">
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
@@ -913,47 +864,6 @@ export default function CoordinatorHackathonsPage() {
                                   />
                                 </div>
                               </div>
-                              <div className="grid grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="currentParticipants">Current Participants</Label>
-                                  <Input
-                                    id="currentParticipants"
-                                    type="number"
-                                    value={editHackathon.currentParticipants}
-                                    onChange={(e) =>
-                                      setEditHackathon({
-                                        ...editHackathon,
-                                        currentParticipants: e.target.value,
-                                      })
-                                    }
-                                    placeholder="0"
-                                    min="0"
-                                  />
-
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="mentorAssigned">Mentors Assigned</Label>
-                                  <Input
-                                    id="mentorAssigned"
-                                    type="number"
-                                    value={editHackathon.mentorAssigned}
-                                    onChange={(e) => setEditHackathon({ ...editHackathon, mentorAssigned: e.target.value })}
-                                    placeholder="0"
-                                    min="0"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="teamsFormed">Teams Formed</Label>
-                                  <Input
-                                    id="teamsFormed"
-                                    type="number"
-                                    value={editHackathon.teamsFormed}
-                                    onChange={(e) => setEditHackathon({ ...editHackathon, teamsFormed: e.target.value })}
-                                    placeholder="0"
-                                    min="0"
-                                  />
-                                </div>
-                              </div>
 
                             </div>
                             <div className="flex justify-end gap-2">
@@ -999,7 +909,7 @@ export default function CoordinatorHackathonsPage() {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Users className="h-4 w-4" />
-                    {hackathon.currentParticipants}/{hackathon.maxParticipants} participants
+                    {getHackathonStats(hackathon).participantsCount}/{hackathon.maxParticipants} participants
                   </div>
                 </div>
 
@@ -1007,17 +917,17 @@ export default function CoordinatorHackathonsPage() {
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span>Registration Progress</span>
-                      <span>{Math.round((hackathon.currentParticipants / hackathon.maxParticipants) * 100)}%</span>
+                      <span>{Math.round((getHackathonStats(hackathon).participantsCount / hackathon.maxParticipants) * 100)}%</span>
                     </div>
                     <Progress
-                      value={(hackathon.currentParticipants / hackathon.maxParticipants) * 100}
+                      value={(getHackathonStats(hackathon).participantsCount / hackathon.maxParticipants) * 100}
                       className="h-2"
                     />
                   </div>
 
                   <div className="flex flex-wrap gap-2">
                     {hackathon.categories.map((category: any, index: any) => (
-                      <Badge key={index} variant="outline">
+                      <Badge key={`${hackathon._id || hackathon.id}-category-${index}`} variant="outline">
                         {category}
                       </Badge>
                     ))}
@@ -1025,16 +935,16 @@ export default function CoordinatorHackathonsPage() {
 
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div className="p-3 bg-purple-50 rounded-lg">
-                      <p className="text-2xl font-bold text-purple-600">{hackathon.currentParticipants}</p>
+                      <p className="text-2xl font-bold text-purple-600">{getHackathonStats(hackathon).participantsCount}</p>
                       <p className="text-xs text-gray-600">Current participants</p>
                     </div>
                     <div className="p-3 bg-green-50 rounded-lg">
-                      <p className="text-2xl font-bold text-green-600">{hackathon.mentorAssigned}</p>
+                      <p className="text-2xl font-bold text-green-600">{getHackathonStats(hackathon).mentorsCount}</p>
                       <p className="text-xs text-gray-600">Mentors Assigned</p>
                     </div>
 
                     <div className="p-3 bg-blue-50 rounded-lg">
-                      <p className="text-2xl font-bold text-blue-600">{hackathon.teamsFormed}</p>
+                      <p className="text-2xl font-bold text-blue-600">{getHackathonStats(hackathon).teamsCount}</p>
                       <p className="text-xs text-gray-600">Teams Formed</p>
                     </div>
 
@@ -1103,7 +1013,7 @@ export default function CoordinatorHackathonsPage() {
                       <CardContent>
                         <div className="space-y-2">
                           {selectedHackathon.prizes.map((prize: string, index: number) => (
-                            <div key={index} className="flex justify-between">
+                            <div key={`${selectedHackathon._id || selectedHackathon.id}-prize-${index}`} className="flex justify-between">
                               <span className="text-gray-600">
                                 {index === 0 ? "1st Place" : index === 1 ? "2nd Place" : "3rd Place"}:
                               </span>

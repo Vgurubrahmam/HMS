@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -18,175 +18,117 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { Users, MessageSquare, Calendar, Clock, Trophy, Target, BookOpen, Send, Plus } from "lucide-react"
+import { Users, MessageSquare, Calendar, Clock, Trophy, Target, BookOpen, Send, Plus, Loader2, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useCurrentUser } from "@/hooks/use-current-user"
+import { useTeams } from "@/hooks/use-teams"
+import { useHackathons } from "@/hooks/use-hackathons"
+import Link from "next/link"
 
 export default function MentorTeamsPage() {
-  const [teams, setTeams] = useState([
-    {
-      id: 1,
-      name: "Code Crushers",
-      hackathon: "AI Innovation Challenge 2024",
-      projectTitle: "AI-Powered Healthcare Assistant",
-      members: [
-        {
-          id: 1,
-          name: "Sarah Johnson",
-          role: "Team Lead",
-          email: "sarah@example.com",
-          avatar: "/placeholder.svg?height=32&width=32",
-          skills: ["Python", "ML"],
-        },
-        {
-          id: 2,
-          name: "Mike Chen",
-          role: "Developer",
-          email: "mike@example.com",
-          avatar: "/placeholder.svg?height=32&width=32",
-          skills: ["TensorFlow", "React"],
-        },
-        {
-          id: 3,
-          name: "Emily Davis",
-          role: "Designer",
-          email: "emily@example.com",
-          avatar: "/placeholder.svg?height=32&width=32",
-          skills: ["UI/UX", "Figma"],
-        },
-        {
-          id: 4,
-          name: "Alex Kumar",
-          role: "Developer",
-          email: "alex@example.com",
-          avatar: "/placeholder.svg?height=32&width=32",
-          skills: ["Backend", "APIs"],
-        },
-      ],
-      progress: 75,
-      status: "On Track",
-      lastUpdate: "2 hours ago",
-      nextMeeting: "Today, 3:00 PM",
-      milestones: [
-        { title: "Project Planning", completed: true, dueDate: "2024-01-15" },
-        { title: "MVP Development", completed: true, dueDate: "2024-01-16" },
-        { title: "Testing & Refinement", completed: false, dueDate: "2024-01-17" },
-        { title: "Final Presentation", completed: false, dueDate: "2024-01-17" },
-      ],
-      recentMessages: [
-        {
-          sender: "Sarah Johnson",
-          message: "Need help with TensorFlow implementation",
-          time: "1 hour ago",
-          unread: true,
-        },
-        { sender: "Mike Chen", message: "API integration completed", time: "3 hours ago", unread: false },
-      ],
-      challenges: ["Model accuracy needs improvement", "API response time optimization"],
-      strengths: ["Strong team collaboration", "Clear project vision", "Good technical skills"],
-    },
-    {
-      id: 2,
-      name: "Blockchain Builders",
-      hackathon: "Web3 Developer Summit",
-      projectTitle: "Decentralized Voting Platform",
-      members: [
-        {
-          id: 5,
-          name: "John Doe",
-          role: "Team Lead",
-          email: "john@example.com",
-          avatar: "/placeholder.svg?height=32&width=32",
-          skills: ["Solidity", "Web3"],
-        },
-        {
-          id: 6,
-          name: "Lisa Wang",
-          role: "Smart Contract Dev",
-          email: "lisa@example.com",
-          avatar: "/placeholder.svg?height=32&width=32",
-          skills: ["Ethereum", "DeFi"],
-        },
-        {
-          id: 7,
-          name: "Tom Brown",
-          role: "Frontend Dev",
-          email: "tom@example.com",
-          avatar: "/placeholder.svg?height=32&width=32",
-          skills: ["React", "Web3.js"],
-        },
-      ],
-      progress: 45,
-      status: "Needs Attention",
-      lastUpdate: "1 day ago",
-      nextMeeting: "Tomorrow, 10:00 AM",
-      milestones: [
-        { title: "Smart Contract Design", completed: true, dueDate: "2024-01-22" },
-        { title: "Contract Development", completed: false, dueDate: "2024-01-23" },
-        { title: "Frontend Integration", completed: false, dueDate: "2024-01-24" },
-        { title: "Testing & Deployment", completed: false, dueDate: "2024-01-24" },
-      ],
-      recentMessages: [
-        { sender: "John Doe", message: "Smart contract testing issues", time: "5 hours ago", unread: true },
-        { sender: "Lisa Wang", message: "Need guidance on gas optimization", time: "1 day ago", unread: true },
-      ],
-      challenges: ["Smart contract complexity", "Gas optimization issues", "Testing environment setup"],
-      strengths: ["Innovative concept", "Blockchain expertise", "Dedicated team members"],
-    },
-    {
-      id: 3,
-      name: "Mobile Masters",
-      hackathon: "Mobile App Hackathon",
-      projectTitle: "Fitness Tracking App",
-      members: [
-        {
-          id: 8,
-          name: "Anna Lee",
-          role: "Team Lead",
-          email: "anna@example.com",
-          avatar: "/placeholder.svg?height=32&width=32",
-          skills: ["React Native", "iOS"],
-        },
-        {
-          id: 9,
-          name: "David Kim",
-          role: "iOS Developer",
-          email: "david@example.com",
-          avatar: "/placeholder.svg?height=32&width=32",
-          skills: ["Swift", "iOS"],
-        },
-        {
-          id: 10,
-          name: "Sophie Chen",
-          role: "Android Developer",
-          email: "sophie@example.com",
-          avatar: "/placeholder.svg?height=32&width=32",
-          skills: ["Kotlin", "Android"],
-        },
-      ],
-      progress: 90,
-      status: "Excellent",
-      lastUpdate: "30 minutes ago",
-      nextMeeting: "Jan 20, 2:00 PM",
-      milestones: [
-        { title: "App Design", completed: true, dueDate: "2024-02-01" },
-        { title: "Core Features", completed: true, dueDate: "2024-02-02" },
-        { title: "Testing", completed: true, dueDate: "2024-02-03" },
-        { title: "Final Polish", completed: false, dueDate: "2024-02-03" },
-      ],
-      recentMessages: [
-        { sender: "Anna Lee", message: "Demo slides are ready for review", time: "30 minutes ago", unread: false },
-        { sender: "David Kim", message: "iOS version testing completed", time: "2 hours ago", unread: false },
-      ],
-      challenges: ["Minor UI polish needed"],
-      strengths: ["Excellent execution", "Great user experience", "Strong technical implementation"],
-    },
-  ])
+  const { userData, loading: userLoading } = useCurrentUser()
+  const currentUserId = userData?.id
+  const { teams: allTeams, loading: teamsLoading } = useTeams({ limit: 50 })
+  const { hackathons, loading: hackathonsLoading } = useHackathons({ limit: 20 })
+  const { toast } = useToast()
+
+  const loading = userLoading || teamsLoading || hackathonsLoading
+
+  // Filter teams where current user is the mentor
+  const teams = useMemo(() => {
+    return allTeams.filter((team: any) => 
+      team.mentor?._id === currentUserId || team.mentor?.id === currentUserId
+    ).map((team: any) => ({
+      id: team._id,
+      name: team.name || "Unnamed Team",
+      hackathon: team.hackathon?.title || "Unknown Hackathon",
+      projectTitle: team.project?.title || team.project?.name || "Project Title TBD",
+      members: team.members?.map((member: any) => ({
+        id: member._id || member.id,
+        name: member.name || member.username || "Team Member",
+        role: member.role || "Member",
+        email: member.email || "",
+        avatar: member.avatar || "/placeholder.svg",
+        skills: member.skills || ["Developer"]
+      })) || [],
+      progress: team.progress?.overall || 0,
+      status: getTeamStatusFromProgress(team.progress?.overall || 0, team.submissionStatus),
+      lastUpdate: formatLastUpdate(team.updatedAt || team.createdAt),
+      nextMeeting: "TBD",
+      milestones: generateMilestones(team.hackathon),
+      recentMessages: [], // Will be populated from actual messaging system
+      challenges: team.challenges || ["No challenges reported"],
+      strengths: team.strengths || ["Team collaboration"],
+      rawTeam: team
+    }))
+  }, [allTeams, currentUserId])
+
+  // Helper functions
+  const getTeamStatusFromProgress = (progress: number, submissionStatus: string) => {
+    if (submissionStatus === "submitted") return "Completed"
+    if (progress >= 80) return "Excellent"
+    if (progress >= 50) return "On Track"
+    return "Needs Attention"
+  }
+
+  const formatLastUpdate = (dateString: string) => {
+    if (!dateString) return "No updates"
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffHours / 24)
+    
+    if (diffHours < 1) return "Just now"
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+    return date.toLocaleDateString()
+  }
+
+  const generateMilestones = (hackathon: any) => {
+    if (!hackathon) return []
+    const startDate = new Date(hackathon.startDate)
+    const endDate = new Date(hackathon.endDate)
+    const duration = endDate.getTime() - startDate.getTime()
+    const quarter = duration / 4
+
+    return [
+      { 
+        title: "Project Planning", 
+        completed: true, 
+        dueDate: new Date(startDate.getTime() + quarter).toLocaleDateString() 
+      },
+      { 
+        title: "MVP Development", 
+        completed: true, 
+        dueDate: new Date(startDate.getTime() + (quarter * 2)).toLocaleDateString() 
+      },
+      { 
+        title: "Testing & Refinement", 
+        completed: false, 
+        dueDate: new Date(startDate.getTime() + (quarter * 3)).toLocaleDateString() 
+      },
+      { 
+        title: "Final Presentation", 
+        completed: false, 
+        dueDate: endDate.toLocaleDateString() 
+      },
+    ]
+  }
 
   const [selectedTeam, setSelectedTeam] = useState<any>(null)
   const [newMessage, setNewMessage] = useState("")
   const [newFeedback, setNewFeedback] = useState("")
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false)
-  const { toast } = useToast()
+
+  // Calculate dynamic stats
+  const stats = useMemo(() => ({
+    totalTeams: teams.length,
+    excellentTeams: teams.filter((t) => t.status === "Excellent").length,
+    onTrackTeams: teams.filter((t) => t.status === "On Track").length,
+    needsAttentionTeams: teams.filter((t) => t.status === "Needs Attention").length,
+    completedTeams: teams.filter((t) => t.status === "Completed").length,
+  }), [teams])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -222,11 +164,15 @@ export default function MentorTeamsPage() {
     setNewFeedback("")
   }
 
-  const stats = {
-    totalTeams: teams.length,
-    excellentTeams: teams.filter((t) => t.status === "Excellent").length,
-    onTrackTeams: teams.filter((t) => t.status === "On Track").length,
-    needsAttentionTeams: teams.filter((t) => t.status === "Needs Attention").length,
+  if (loading) {
+    return (
+      <DashboardLayout userRole="mentor">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading mentor teams...</span>
+        </div>
+      </DashboardLayout>
+    )
   }
 
   return (
@@ -235,12 +181,20 @@ export default function MentorTeamsPage() {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
+            <div className="flex items-center gap-3 mb-2">
+              <Link href="/dashboard/mentor">
+                <Button variant="ghost" size="sm">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+              </Link>
+            </div>
             <h1 className="text-3xl font-bold text-gray-900">My Teams</h1>
             <p className="text-gray-600">Guide and mentor your assigned hackathon teams</p>
           </div>
           <Dialog open={isMessageDialogOpen} onOpenChange={setIsMessageDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button disabled={teams.length === 0}>
                 <MessageSquare className="mr-2 h-4 w-4" />
                 Send Message
               </Button>
@@ -338,7 +292,23 @@ export default function MentorTeamsPage() {
 
         {/* Teams Grid */}
         <div className="grid gap-6">
-          {teams.map((team) => (
+          {teams.length === 0 ? (
+            <Card className="text-center py-12">
+              <CardContent>
+                <Users className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Teams Assigned</h3>
+                <p className="text-gray-600 mb-4">
+                  You haven't been assigned any teams to mentor yet. Teams will appear here when coordinators assign them to you.
+                </p>
+                <Link href="/dashboard/mentor">
+                  <Button variant="outline">
+                    Back to Dashboard
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            teams.map((team) => (
             <Card key={team.id} className="overflow-hidden hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex justify-between items-start">
@@ -364,14 +334,14 @@ export default function MentorTeamsPage() {
                       Team Members ({team.members.length})
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                      {team.members.map((member) => (
+                      {team.members.map((member: any) => (
                         <div key={member.id} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
                           <Avatar className="h-6 w-6">
                             <AvatarImage src={member.avatar || "/placeholder.svg"} />
                             <AvatarFallback>
                               {member.name
                                 .split(" ")
-                                .map((n) => n[0])
+                                .map((n: string) => n[0])
                                 .join("")}
                             </AvatarFallback>
                           </Avatar>
@@ -406,15 +376,15 @@ export default function MentorTeamsPage() {
                   </div>
 
                   {/* Unread Messages */}
-                  {team.recentMessages.some((msg) => msg.unread) && (
+                  {team.recentMessages && team.recentMessages.length > 0 && team.recentMessages.some((msg: any) => msg.unread) && (
                     <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                       <div className="flex items-center gap-2 mb-2">
                         <MessageSquare className="h-4 w-4 text-blue-600" />
                         <span className="text-sm font-medium text-blue-800">New Messages</span>
                       </div>
                       {team.recentMessages
-                        .filter((msg) => msg.unread)
-                        .map((message, index) => (
+                        .filter((msg: any) => msg.unread)
+                        .map((message: any, index: number) => (
                           <div key={index} className="text-sm">
                             <span className="font-medium">{message.sender}:</span> {message.message}
                             <span className="text-gray-500 ml-2">({message.time})</span>
@@ -441,7 +411,8 @@ export default function MentorTeamsPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            ))
+          )}
         </div>
 
         {/* Team Details Modal */}

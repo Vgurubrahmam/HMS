@@ -90,7 +90,7 @@ export async function POST(req: Request): Promise<Response> {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 1 * 60, // 1 hour
+      maxAge: 60 * 60, // 1 hour (3600 seconds)
     })
 
     // Prepare response
