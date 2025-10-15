@@ -8,8 +8,9 @@ import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Users, Calendar, Trophy, MessageSquare, Clock, Star, BookOpen, Loader2, Plus, Eye, RefreshCw } from "lucide-react"
 import { useCurrentUser } from "@/hooks/use-current-user"
+import { useMessages } from "@/hooks/use-messages"
 import { useToast } from "@/hooks/use-toast"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
 import ProtectedRoute from "@/components/protected-route"
 import { getValidToken } from "@/lib/auth-utils"
@@ -22,6 +23,20 @@ function MentorDashboardContent() {
   const [mentorSessions, setMentorSessions] = useState<any[]>([])
   const [loadingTeams, setLoadingTeams] = useState(true)
   const [loadingSessions, setLoadingSessions] = useState(true)
+
+  // Use the new messages hook
+  const {
+    messages,
+    unreadCount,
+    loading: loadingMessages,
+    error: messagesError,
+    refreshMessages,
+    markAsRead
+  } = useMessages({
+    userId: currentUserId,
+    autoRefresh: true,
+    refreshInterval: 30000
+  })
 
   const loading = userLoading || loadingTeams || loadingSessions
 
@@ -106,7 +121,7 @@ function MentorDashboardContent() {
       
       if (response.ok) {
         const data = await response.json()
-        setMentorSessions(data.data || [])
+        setMentorSessions(data.data?.all || [])
       } else {
         console.error('Failed to fetch mentor sessions')
         toast({
@@ -198,16 +213,20 @@ function MentorDashboardContent() {
 
   // Get real upcoming meetings from mentor sessions
   const upcomingMeetings = useMemo(() => {
+    if (!Array.isArray(mentorSessions)) {
+      return []
+    }
+    
     return mentorSessions
       .filter((session: any) => 
         session.status === "Scheduled" && 
-        new Date(session.scheduledAt) > new Date()
+        new Date(session.scheduledDate || session.scheduledAt) > new Date()
       )
-      .sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+      .sort((a: any, b: any) => new Date(a.scheduledDate || a.scheduledAt).getTime() - new Date(b.scheduledDate || b.scheduledAt).getTime())
       .slice(0, 3)
       .map((session: any) => ({
-        team: session.team?.name || "Unknown Team",
-        time: formatMeetingTime(session.scheduledAt),
+        team: session.teamName || session.team?.name || "Unknown Team",
+        time: formatMeetingTime(session.scheduledDate || session.scheduledAt),
         topic: session.title || "Mentoring Session",
         type: session.type || "Meeting",
         teamId: session.team?._id,
@@ -215,18 +234,68 @@ function MentorDashboardContent() {
       }))
   }, [mentorSessions])
 
-  // Get recent messages/communications from teams
+  // Get recent messages from the messages hook
   const recentMessages = useMemo(() => {
-    return activeTeams.slice(0, 3).map((team, index) => ({
-      team: team.name,
-      member: team.team.members?.[0]?.username || team.team.project?.teamLead || "Team Lead",
-      message: getRecentMessage(team.progress, index),
-      time: getMessageTime(index),
-      unread: index === 0, // First message is unread
-      teamId: team.id,
-      avatar: team.team.members?.[0]?.image || "/placeholder.svg"
+    return messages.slice(0, 5).map((message) => ({
+      id: message._id,
+      team: message.team?.name || "Direct Message",
+      member: message.sender?.username || "Unknown User",
+      message: message.content,
+      subject: message.subject,
+      time: formatMessageTime(message.createdAt),
+      unread: !message.isRead,
+      teamId: message.team?._id,
+      messageId: message._id,
+      avatar: message.sender?.image || "/placeholder.svg",
+      priority: message.priority,
+      messageType: message.messageType,
+      senderRole: message.sender?.role || "user"
     }))
-  }, [activeTeams])
+  }, [messages])
+
+  // Handle marking message as read
+  const handleMessageClick = useCallback(async (messageId: string, isUnread: boolean) => {
+    if (isUnread) {
+      await markAsRead([messageId])
+    }
+  }, [markAsRead])
+
+  // Format message time
+  function formatMessageTime(dateString: string) {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+    
+    if (diffInHours < 1) return "Just now"
+    if (diffInHours < 24) return `${diffInHours} hours ago`
+    const diffInDays = Math.floor(diffInHours / 24)
+    if (diffInDays === 1) return "1 day ago"
+    if (diffInDays < 7) return `${diffInDays} days ago`
+    return date.toLocaleDateString()
+  }
+
+  // Get priority color
+  function getPriorityColor(priority: string) {
+    switch (priority) {
+      case 'urgent': return 'text-red-600'
+      case 'high': return 'text-orange-600'
+      case 'normal': return 'text-blue-600'
+      case 'low': return 'text-gray-600'
+      default: return 'text-gray-600'
+    }
+  }
+
+  // Get message type badge
+  function getMessageTypeBadge(messageType: string) {
+    switch (messageType) {
+      case 'urgent': return { color: 'bg-red-100 text-red-800', label: 'Urgent' }
+      case 'question': return { color: 'bg-blue-100 text-blue-800', label: 'Question' }
+      case 'team_update': return { color: 'bg-green-100 text-green-800', label: 'Update' }
+      case 'feedback_request': return { color: 'bg-purple-100 text-purple-800', label: 'Feedback' }
+      case 'announcement': return { color: 'bg-yellow-100 text-yellow-800', label: 'Announcement' }
+      default: return { color: 'bg-gray-100 text-gray-800', label: 'Message' }
+    }
+  }
 
   
 
@@ -269,39 +338,6 @@ function MentorDashboardContent() {
     if (progress >= 60) return "On Track"
     if (progress >= 30) return "Needs Attention"
     return "Just Started"
-  }
-
-  function getNextMeetingTime(index: number) {
-    const times = ["Today, 3:00 PM", "Tomorrow, 10:00 AM", "Wed, 2:00 PM"]
-    return times[index] || "TBD"
-  }
-
-  function getNextMeetingTopic(progress: number) {
-    if (progress >= 80) return "Final Demo Preparation"
-    if (progress >= 60) return "Progress Review & Next Steps"
-    if (progress >= 30) return "Technical Challenge Discussion"
-    return "Project Planning & Goal Setting"
-  }
-
-  function getMeetingType(progress: number) {
-    if (progress >= 80) return "Demo Prep"
-    if (progress >= 60) return "Progress Review"
-    if (progress >= 30) return "Technical Support"
-    return "Planning Session"
-  }
-
-  function getRecentMessage(progress: number, index: number) {
-    const messages = [
-      "Need help with the final integration",
-      "Demo slides are ready for review",
-      "API implementation is complete"
-    ]
-    return messages[index] || "Ready for next mentoring session"
-  }
-
-  function getMessageTime(index: number) {
-    const times = ["1 hour ago", "3 hours ago", "5 hours ago"]
-    return times[index] || "Recently"
   }
 
   if (loading) {
@@ -479,52 +515,128 @@ function MentorDashboardContent() {
 
         {/* Recent Messages */}
         <Card>
-          <CardHeader>
-            <CardTitle>Recent Messages</CardTitle>
-            <CardDescription>Latest communications from your teams</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Recent Messages</CardTitle>
+              <CardDescription>
+                Latest communications from your teams
+                {unreadCount > 0 && (
+                  <Badge variant="destructive" className="ml-2">
+                    {unreadCount} unread
+                  </Badge>
+                )}
+              </CardDescription>
+            </div>
+            <Button 
+              onClick={refreshMessages} 
+              variant="outline" 
+              size="sm"
+              disabled={loadingMessages}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${loadingMessages ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentMessages.length === 0 ? (
+              {loadingMessages ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="animate-pulse">
+                      <div className="flex items-start gap-3">
+                        <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : messagesError ? (
+                <div className="text-center py-8 text-red-500">
+                  <MessageSquare className="h-12 w-12 mx-auto mb-4 text-red-300" />
+                  <p>Error loading messages</p>
+                  <p className="text-sm">{messagesError}</p>
+                  <Button 
+                    onClick={refreshMessages} 
+                    variant="outline" 
+                    size="sm"
+                    className="mt-2"
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              ) : recentMessages.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                   <p>No recent messages</p>
                   <p className="text-sm">Messages from your teams will appear here</p>
                 </div>
               ) : (
-                recentMessages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`p-4 border rounded-lg hover:bg-gray-50 transition-colors ${
-                      message.unread ? "bg-blue-50 border-blue-200" : ""
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={message.avatar} />
-                        <AvatarFallback>
-                          {message.member
-                            .split(" ")
-                            .map((n: string) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start mb-1">
-                          <div>
-                            <p className="font-medium text-sm">{message.member}</p>
-                            <p className="text-xs text-gray-500">{message.team}</p>
+                recentMessages.map((message) => {
+                  const messageTypeBadge = getMessageTypeBadge(message.messageType)
+                  return (
+                    <div
+                      key={message.id}
+                      onClick={() => handleMessageClick(message.messageId, message.unread)}
+                      className={`p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer ${
+                        message.unread ? "bg-blue-50 border-blue-200" : ""
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={message.avatar} />
+                          <AvatarFallback>
+                            {message.member
+                              .split(" ")
+                              .map((n: string) => n[0])
+                              .join("")
+                              .toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start mb-1">
+                            <div>
+                              <p className="font-medium text-sm">{message.member}</p>
+                              <p className="text-xs text-gray-500">
+                                {message.team} • {message.senderRole}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs ${messageTypeBadge.color}`}
+                              >
+                                {messageTypeBadge.label}
+                              </Badge>
+                              <span className={`text-xs ${getPriorityColor(message.priority)}`}>
+                                {message.time}
+                              </span>
+                              {message.unread && <div className="w-2 h-2 bg-blue-500 rounded-full" />}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500">{message.time}</span>
-                            {message.unread && <div className="w-2 h-2 bg-blue-500 rounded-full" />}
-                          </div>
+                          <p className="font-medium text-sm text-gray-900 mb-1">
+                            {message.subject}
+                          </p>
+                          <p className="text-sm text-gray-700 line-clamp-2">
+                            {message.message}
+                          </p>
                         </div>
-                        <p className="text-sm text-gray-700">{message.message}</p>
                       </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
+              )}
+              
+              {recentMessages.length > 0 && (
+                <div className="pt-4 border-t">
+                  <Link href="/dashboard/mentor/messages">
+                    <Button variant="outline" className="w-full">
+                      View All Messages ({messages.length})
+                    </Button>
+                  </Link>
+                </div>
               )}
             </div>
           </CardContent>

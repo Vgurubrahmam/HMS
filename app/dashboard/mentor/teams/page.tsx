@@ -55,9 +55,6 @@ export default function MentorTeamsPage() {
         return
       }
 
-      console.log("=== MENTOR TEAMS DEBUG ===");
-      console.log("Current user ID:", currentUserId);
-      console.log("API URL:", `/api/mentors/${currentUserId}/teams`);
 
       const response = await fetch(`/api/mentors/${currentUserId}/teams`, {
         headers: { 
@@ -68,8 +65,6 @@ export default function MentorTeamsPage() {
       
       if (response.ok) {
         const data = await response.json()
-        console.log("API Response:", data);
-        console.log("Teams received:", data.teams);
         setMentorTeams(data.teams || [])
       } else {
         console.error("API Error:", response.status, response.statusText);
