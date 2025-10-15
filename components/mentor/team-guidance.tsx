@@ -28,7 +28,8 @@ import {
   FileText,
   Star,
   ThumbsUp,
-  Eye
+  Eye,
+  RefreshCw
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useCurrentUser } from "@/hooks/use-current-user"
@@ -45,7 +46,7 @@ interface Team {
   }
   members: Array<{
     _id: string
-    username: string
+    name: string
     email: string
     image?: string
     role?: string
@@ -98,6 +99,7 @@ export function MentorTeamGuidance() {
   const [sessions, setSessions] = useState<MentorSession[]>([])
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("overview")
   const { userData } = useCurrentUser()
   const { toast } = useToast()
@@ -127,20 +129,72 @@ export function MentorTeamGuidance() {
   const fetchAssignedTeams = async () => {
     try {
       setLoading(true)
+      setError(null)
       const response = await fetch(`/api/mentors/${userData?.id}/teams`)
-      if (response.ok) {
-        const data = await response.json()
-        // Transform the data to match the interface
-        const transformedTeams = (data.data || []).map((team: any) => ({
-          ...team,
-          progress: team.progress?.overall || 0
-        }))
-        setTeams(transformedTeams)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch teams: ${response.status}`)
       }
+      
+      const data = await response.json()
+      console.log("Raw teams data:", data.data)
+      
+      if (!data.success) {
+        throw new Error(data.error || "Failed to fetch teams")
+      }
+      
+      // Transform the data to match the interface
+      const transformedTeams = (data.data || []).map((team: any) => ({
+        _id: team._id,
+        name: team.name,
+        hackathon: {
+          _id: team.hackathon?._id || team.hackathon,
+          title: team.hackathon?.title || "Unknown Hackathon",
+          dates: {
+            start: team.hackathon?.startDate || team.hackathon?.dates?.start,
+            end: team.hackathon?.endDate || team.hackathon?.dates?.end
+          },
+          status: team.hackathon?.status || "Active"
+        },
+        members: (team.members || []).map((member: any) => ({
+          _id: member._id,
+          name: member.name || member.fullName || "Unknown Member",
+          email: member.email || "",
+          image: member.profilePicture || member.image,
+          role: member === team.teamLead ? "Team Lead" : "Member"
+        })),
+        project: {
+          title: team.projectTitle || "Untitled Project",
+          description: team.projectDescription || "No description available",
+          repository: team.submissionUrl || "",
+          liveUrl: "",
+          techStack: []
+        },
+        progress: team.progress || 0,
+        currentPhase: (() => {
+          const status = team.submissionStatus || "Planning"
+          const phaseMap: { [key: string]: "Planning" | "Development" | "Testing" | "Demo" | "Completed" } = {
+            "Planning": "Planning",
+            "In Progress": "Development", 
+            "Submitted": "Demo",
+            "Evaluated": "Completed"
+          }
+          return phaseMap[status] || "Planning"
+        })(),
+        milestones: [],
+        meetings: [],
+        feedback: []
+      }))
+      
+      console.log("Transformed teams:", transformedTeams)
+      setTeams(transformedTeams)
     } catch (error) {
+      console.error("Error fetching teams:", error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to fetch assigned teams"
+      setError(errorMessage)
       toast({
         title: "Error",
-        description: "Failed to fetch assigned teams",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -151,12 +205,22 @@ export function MentorTeamGuidance() {
   const fetchMentorSessions = async () => {
     try {
       const response = await fetch(`/api/mentors/${userData?.id}/sessions`)
-      if (response.ok) {
-        const data = await response.json()
-        setSessions(data.data || [])
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch sessions: ${response.status}`)
       }
+      
+      const data = await response.json()
+      
+      if (!data.success) {
+        throw new Error(data.error || "Failed to fetch sessions")
+      }
+      
+      setSessions(data.data || [])
     } catch (error) {
       console.error("Failed to fetch sessions:", error)
+      // Don't show toast for sessions since it's not critical
+      setSessions([])
     }
   }
 
@@ -259,10 +323,23 @@ export function MentorTeamGuidance() {
     }
   }
 
-  const activeTeams = teams.filter(t => t.hackathon.status === "Active")
-  const completedTeams = teams.filter(t => t.hackathon.status === "Completed")
-  const upcomingSessions = sessions.filter(s => s.status === "Scheduled" && new Date(s.scheduledDate) > new Date())
-  const averageProgress = teams.length > 0 ? teams.reduce((sum, t) => sum + t.progress, 0) / teams.length : 0
+  const refreshData = async () => {
+    if (userData?.id) {
+      await Promise.all([
+        fetchAssignedTeams(),
+        fetchMentorSessions()
+      ])
+      toast({
+        title: "Success",
+        description: "Data refreshed successfully",
+      })
+    }
+  }
+
+  const activeTeams = teams.filter(t => t?.hackathon?.status === "Active")
+  const completedTeams = teams.filter(t => t?.hackathon?.status === "Completed")
+  const upcomingSessions = sessions.filter(s => s?.status === "Scheduled" && new Date(s.scheduledDate) > new Date())
+  const averageProgress = teams.length > 0 ? teams.reduce((sum, t) => sum + (t?.progress || 0), 0) / teams.length : 0
 
   return (
     <div className="space-y-6">
@@ -272,7 +349,40 @@ export function MentorTeamGuidance() {
           <h2 className="text-2xl font-bold">Team Guidance Dashboard</h2>
           <p className="text-gray-600">Guide and mentor your assigned hackathon teams</p>
         </div>
+        <Button 
+          onClick={refreshData} 
+          disabled={loading}
+          variant="outline"
+          size="sm"
+        >
+          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
+
+      {/* Error State */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-6 w-6 text-red-600" />
+              <div>
+                <p className="font-medium text-red-800">Error Loading Data</p>
+                <p className="text-sm text-red-600">{error}</p>
+                <Button 
+                  onClick={refreshData} 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  disabled={loading}
+                >
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -282,7 +392,9 @@ export function MentorTeamGuidance() {
               <Users className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Active Teams</p>
-                <p className="text-2xl font-bold">{activeTeams.length}</p>
+                <p className="text-2xl font-bold">
+                  {loading ? "..." : activeTeams.length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -294,7 +406,9 @@ export function MentorTeamGuidance() {
               <CheckCircle className="h-8 w-8 text-green-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Completed</p>
-                <p className="text-2xl font-bold">{completedTeams.length}</p>
+                <p className="text-2xl font-bold">
+                  {loading ? "..." : completedTeams.length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -306,7 +420,9 @@ export function MentorTeamGuidance() {
               <Calendar className="h-8 w-8 text-purple-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Upcoming Sessions</p>
-                <p className="text-2xl font-bold">{upcomingSessions.length}</p>
+                <p className="text-2xl font-bold">
+                  {loading ? "..." : upcomingSessions.length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -318,7 +434,9 @@ export function MentorTeamGuidance() {
               <TrendingUp className="h-8 w-8 text-orange-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Avg. Progress</p>
-                <p className="text-2xl font-bold">{averageProgress.toFixed(1)}%</p>
+                <p className="text-2xl font-bold">
+                  {loading ? "..." : `${averageProgress.toFixed(1)}%`}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -333,7 +451,26 @@ export function MentorTeamGuidance() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          {activeTeams.map((team) => (
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-6">
+                    <div className="space-y-3">
+                      <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                      <div className="flex gap-2">
+                        <div className="h-6 bg-gray-200 rounded w-20"></div>
+                        <div className="h-6 bg-gray-200 rounded w-24"></div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <>
+              {activeTeams.map((team) => (
             <Card key={team._id} className="hover:shadow-md transition-shadow">
               <CardHeader>
                 <div className="flex justify-between items-start">
@@ -540,9 +677,12 @@ export function MentorTeamGuidance() {
                           <div key={member._id} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
                             <Avatar className="h-6 w-6">
                               <AvatarImage src={member.image} />
-                              <AvatarFallback>{member.username?.charAt(0) || 'M'}</AvatarFallback>
+                              <AvatarFallback>{member.name?.charAt(0) || 'M'}</AvatarFallback>
                             </Avatar>
-                            <span className="text-sm">{member.username}</span>
+                            <span className="text-sm">{member.name}</span>
+                            {member.role && (
+                              <Badge variant="secondary" className="text-xs">{member.role}</Badge>
+                            )}
                           </div>
                         ))
                       ) : (
@@ -628,7 +768,7 @@ export function MentorTeamGuidance() {
             </Card>
           ))}
 
-          {activeTeams.length === 0 && (
+          {!loading && activeTeams.length === 0 && (
             <Card>
               <CardContent className="text-center py-8">
                 <Users className="h-12 w-12 mx-auto text-gray-400 mb-4" />
@@ -636,6 +776,8 @@ export function MentorTeamGuidance() {
                 <p className="text-sm text-gray-500">Contact coordinators to get assigned to teams</p>
               </CardContent>
             </Card>
+          )}
+            </>
           )}
         </TabsContent>
 

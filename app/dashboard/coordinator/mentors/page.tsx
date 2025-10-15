@@ -170,13 +170,7 @@ function CoordinatorMentorsContent() {
     }
   }
 
-  const refreshData = async () => {
-    await Promise.all([fetchMentors(), fetchTeams()])
-    toast({
-      title: "Data Refreshed",
-      description: "Mentor and team data has been updated.",
-    })
-  }
+ 
 
   const handleCreateMentor = async () => {
     try {
@@ -403,7 +397,17 @@ function CoordinatorMentorsContent() {
   }
 
   const getMentorTeams = (mentorId: string) => {
-    return teams.filter((team: any) => team.mentor?._id === mentorId || team.mentor?.id === mentorId)
+    
+    
+    const filteredTeams = teams.filter((team: any) => {
+      const teamMentorId = team.mentor?._id?.toString() || team.mentor?.id?.toString() || team.mentor?.toString()
+      const currentMentorId = mentorId?.toString()
+      
+      
+      return teamMentorId === currentMentorId
+    })
+    
+    return filteredTeams
   }
 
   const filteredMentors = mentors.filter((mentor: any) => {

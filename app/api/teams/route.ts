@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     await db();
 
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = request.nextUrl;
     const hackathonId = searchParams.get("hackathon");
     const mentorId = searchParams.get("mentor");
     const status = searchParams.get("status");
@@ -41,14 +41,24 @@ export async function GET(request: NextRequest) {
       .populate("teamLead", "username name email role image")
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean(); // Convert to plain objects for easier manipulation
 
 
     // Manually populate mentor data from Profile collection
     for (let team of teams) {
       if (team.mentor) {
-        const mentorProfile = await Profile.findById(team.mentor).select("username email expertise department");
-        team.mentor = mentorProfile;
+        const mentorProfile = await Profile.findById(team.mentor).select("username email expertise department").lean();
+        
+        if (mentorProfile && !Array.isArray(mentorProfile)) {
+          // Map username to name for UI compatibility
+          team.mentor = {
+            ...mentorProfile,
+            name: (mentorProfile as any).username
+          };
+        } else {
+          team.mentor = null;
+        }
       }
     }
 

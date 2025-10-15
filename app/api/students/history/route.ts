@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
   try {
     await db()
     
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = request.nextUrl
     const department = searchParams.get('department')
     const year = searchParams.get('year')
     const semester = searchParams.get('semester')

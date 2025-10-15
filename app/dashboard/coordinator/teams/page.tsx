@@ -316,7 +316,6 @@ useEffect(()=>{
       });
 
       const data = await res.json();
-      console.log('Fetch teams response:', data);
 
       if (res.ok && data.success && data.data) { 
         const filteredTeams = Array.isArray(data.data) ? data.data.filter((team: any) => team && team._id) : [];
@@ -976,9 +975,6 @@ useEffect(()=>{
                         </Badge>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="sm" onClick={() => {
-                            console.log('Selected team for viewing:', team);
-                            console.log('Team members:', team.members);
-                            console.log('Team members length:', team.members?.length);
                             setSelectedTeam(team);
                           }}>
                             <Eye className="h-4 w-4" />
@@ -1070,7 +1066,7 @@ useEffect(()=>{
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-gray-600">Mentor:</span>
-                          <p className="font-medium">{team.mentor?.name || "Not assigned"}</p>
+                          <p className="font-medium">{team.mentor?.name || team.mentor?.username || "Not assigned"}</p>
                         </div>
                         <div>
                           <span className="text-gray-600">Room:</span>

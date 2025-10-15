@@ -20,7 +20,15 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // Manually populate mentor data from Profile collection
     if (team.mentor) {
       const mentorProfile = await Profile.findById(team.mentor).select("username email expertise department");
-      team.mentor = mentorProfile;
+      if (mentorProfile) {
+        // Map username to name for UI compatibility
+        team.mentor = {
+          ...mentorProfile.toObject(),
+          name: mentorProfile.username
+        };
+      } else {
+        team.mentor = null;
+      }
     }
 
     return NextResponse.json({
@@ -69,7 +77,15 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     // Manually populate mentor data from Profile collection
     if (team.mentor) {
       const mentorProfile = await Profile.findById(team.mentor).select("username email expertise department");
-      team.mentor = mentorProfile;
+      if (mentorProfile) {
+        // Map username to name for UI compatibility
+        team.mentor = {
+          ...mentorProfile.toObject(),
+          name: mentorProfile.username
+        };
+      } else {
+        team.mentor = null;
+      }
     }
 
     console.log("Team updated successfully:", team.name)

@@ -73,8 +73,16 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     // Manually populate mentor from Profile collection since Team model refs "users"
     if (updatedTeam.mentor) {
       const mentorData = await Profile.findById(updatedTeam.mentor).select("username email expertise department")
-      updatedTeam.mentor = mentorData
-      console.log("Mentor data populated:", mentorData?.username)
+      if (mentorData) {
+        // Map username to name for UI compatibility
+        updatedTeam.mentor = {
+          ...mentorData.toObject(),
+          name: mentorData.username
+        };
+        console.log("Mentor data populated:", mentorData.username)
+      } else {
+        updatedTeam.mentor = null;
+      }
     }
 
     console.log("Team mentor assigned successfully:", updatedTeam.name)

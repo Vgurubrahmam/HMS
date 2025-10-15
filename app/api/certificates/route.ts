@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     await db()
 
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = request.nextUrl
     const userId = searchParams.get("user")
     const hackathonId = searchParams.get("hackathon")
     const type = searchParams.get("type")

@@ -88,34 +88,22 @@ function MentorDashboardContent() {
     try {
       setLoadingSessions(true)
       const token = getValidToken()
-      if (!token) return
+      if (!token) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again",
+          variant: "destructive"
+        })
+        return
+      }
 
-      const response = await fetch(`/api/mentoring-sessions?mentorId=${currentUserId}`, {
+      const response = await fetch(`/api/mentors/${userData?.id}/sessions`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       })
       
-      if (response.ok) {
-        const data = await response.json()
-        setMentorSessions(data.sessions || [])
-      } else {
-        console.error('Failed to fetch mentoring sessions')
-        setMentorSessions([])
-      }
-    } catch (error) {
-      console.error('Error fetching mentoring sessions:', error)
-      setMentorSessions([])
-    } finally {
-      setLoadingSessions(false)
-    }
-  }
-
-  const fetchMentorSessions = async () => {
-    try {
-      setLoadingSessions(true)
-      const response = await fetch(`/api/mentors/${userData?.id}/sessions`)
       if (response.ok) {
         const data = await response.json()
         setMentorSessions(data.data || [])
@@ -142,23 +130,27 @@ function MentorDashboardContent() {
   // Calculate dynamic stats from real mentor teams data
   const stats = useMemo(() => {
     const activeTeams = mentorTeams.filter((team: any) => 
-      team.hackathon?.status === "Active" || team.project?.status === "In Progress"
+      team.status === "Active" || team.status === "In Progress" || !team.status
     )
     const completedTeams = mentorTeams.filter((team: any) => 
-      team.hackathon?.status === "Completed" || team.project?.status === "Completed"
+      team.status === "Completed"
     )
     const averageProgress = mentorTeams.length > 0 
-      ? Math.round(mentorTeams.reduce((sum: number, team: any) => sum + (team.progress?.overall || 0), 0) / mentorTeams.length)
+      ? Math.round(mentorTeams.reduce((sum: number, team: any) => sum + (team.progress || 0), 0) / mentorTeams.length)
       : 0
     
     // Get unique hackathons mentored
-    const hackathonsMentored = new Set(mentorTeams.map((team: any) => team.hackathon?._id)).size
+    const hackathonsMentored = new Set(
+      mentorTeams
+        .filter((team: any) => team.hackathon?._id)
+        .map((team: any) => team.hackathon._id)
+    ).size
 
     return [
       {
-        title: "Active Teams",
-        value: activeTeams.length.toString(),
-        change: `${mentorTeams.length} total teams`,
+        title: "Total Teams",
+        value: mentorTeams.length.toString(),
+        change: `${activeTeams.length} active`,
         icon: Users,
         color: "text-blue-600",
       },
@@ -189,17 +181,16 @@ function MentorDashboardContent() {
   // Get active teams with enhanced data from real mentor teams
   const activeTeams = useMemo(() => {
     return mentorTeams
-      .filter((team: any) => 
-        team.hackathon?.status === "Active" || team.project?.status === "In Progress"
-      )
       .map((team: any) => ({
         id: team._id,
         name: team.name || "Unnamed Team",
         hackathon: team.hackathon?.title || "Unknown Hackathon",
         members: team.members?.length || 0,
-        progress: team.progress?.overall || 0,
-        lastUpdate: formatLastUpdate(team.mentoring?.lastSessionDate || team.hackathon?.startDate),
-        status: getTeamStatusLabel(team.progress?.overall || 0, team.project?.status),
+        progress: team.progress || 0,
+        lastUpdate: formatLastUpdate(team.updatedAt || team.createdAt),
+        status: getTeamStatusLabel(team.progress || 0, team.status),
+        projectTitle: team.projectTitle || "No Project Title",
+        room: team.room || "Not Assigned",
         team: team
       }))
       .slice(0, 5) // Show top 5
@@ -237,19 +228,7 @@ function MentorDashboardContent() {
     }))
   }, [activeTeams])
 
-  // Add refresh functionality
-  const refreshData = async () => {
-    if (userData?.id) {
-      await Promise.all([
-        fetchMentorTeams(),
-        fetchMentorSessions()
-      ])
-      toast({
-        title: "Data Refreshed",
-        description: "Mentor dashboard data has been updated with the latest information.",
-      })
-    }
-  }
+  
 
   // Helper functions
   function formatLastUpdate(dateString: string) {
@@ -346,16 +325,8 @@ function MentorDashboardContent() {
             <p className="text-gray-600">Guide your teams to hackathon success</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={refreshData} disabled={loading}>
-              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            <Link href="/dashboard/mentor/teams">
-              <Button variant="outline">
-                <Eye className="mr-2 h-4 w-4" />
-                View All Teams
-              </Button>
-            </Link>
+            
+            
             <Button>
               <MessageSquare className="mr-2 h-4 w-4" />
                 Message Teams
@@ -573,10 +544,7 @@ function MentorDashboardContent() {
                   Team Progress
                 </Button>
               </Link>
-              <Button variant="outline" className="h-20 flex-col" onClick={() => refreshData()}>
-                <RefreshCw className="h-6 w-6 mb-2" />
-                Refresh Data
-              </Button>
+             
               <Link href="/dashboard/mentor/guidance">
                 <Button variant="outline" className="h-20 flex-col w-full">
                   <BookOpen className="h-6 w-6 mb-2" />

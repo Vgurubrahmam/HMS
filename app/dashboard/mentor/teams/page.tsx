@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -18,52 +18,77 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { Users, MessageSquare, Calendar, Clock, Trophy, Target, BookOpen, Send, Plus, Loader2, ArrowLeft } from "lucide-react"
+import { Users, MessageSquare, Calendar, Clock, Trophy, Target, BookOpen, Send, Plus, Loader2, ArrowLeft, RefreshCw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useCurrentUser } from "@/hooks/use-current-user"
-import { useTeams } from "@/hooks/use-teams"
 import { useHackathons } from "@/hooks/use-hackathons"
+import { getValidToken } from "@/lib/auth-utils"
 import Link from "next/link"
 
 export default function MentorTeamsPage() {
   const { userData, loading: userLoading } = useCurrentUser()
   const currentUserId = userData?.id
-  const { teams: allTeams, loading: teamsLoading } = useTeams({ limit: 50 })
+  const [mentorTeams, setMentorTeams] = useState<any[]>([])
+  const [loadingTeams, setLoadingTeams] = useState(true)
   const { hackathons, loading: hackathonsLoading } = useHackathons({ limit: 20 })
   const { toast } = useToast()
 
-  const loading = userLoading || teamsLoading || hackathonsLoading
+  const loading = userLoading || loadingTeams || hackathonsLoading
 
-  // Filter teams where current user is the mentor
-  const teams = useMemo(() => {
-    return allTeams.filter((team: any) => 
-      team.mentor?._id === currentUserId || team.mentor?.id === currentUserId
-    ).map((team: any) => ({
-      id: team._id,
-      name: team.name || "Unnamed Team",
-      hackathon: team.hackathon?.title || "Unknown Hackathon",
-      projectTitle: team.project?.title || team.project?.name || "Project Title TBD",
-      members: team.members?.map((member: any) => ({
-        id: member._id || member.id,
-        name: member.name || member.username || "Team Member",
-        role: member.role || "Member",
-        email: member.email || "",
-        avatar: member.avatar || "/placeholder.svg",
-        skills: member.skills || ["Developer"]
-      })) || [],
-      progress: team.progress?.overall || 0,
-      status: getTeamStatusFromProgress(team.progress?.overall || 0, team.submissionStatus),
-      lastUpdate: formatLastUpdate(team.updatedAt || team.createdAt),
-      nextMeeting: "TBD",
-      milestones: generateMilestones(team.hackathon),
-      recentMessages: [], // Will be populated from actual messaging system
-      challenges: team.challenges || ["No challenges reported"],
-      strengths: team.strengths || ["Team collaboration"],
-      rawTeam: team
-    }))
-  }, [allTeams, currentUserId])
+  // Fetch mentor-specific teams on component mount and when user changes
+  useEffect(() => {
+    if (userData?.id) {
+      fetchMentorTeams()
+    }
+  }, [userData?.id])
 
-  // Helper functions
+  const fetchMentorTeams = async () => {
+    try {
+      setLoadingTeams(true)
+      const token = getValidToken()
+      if (!token) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again",
+          variant: "destructive"
+        })
+        return
+      }
+
+      console.log("=== MENTOR TEAMS DEBUG ===");
+      console.log("Current user ID:", currentUserId);
+      console.log("API URL:", `/api/mentors/${currentUserId}/teams`);
+
+      const response = await fetch(`/api/mentors/${currentUserId}/teams`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log("API Response:", data);
+        console.log("Teams received:", data.teams);
+        setMentorTeams(data.teams || [])
+      } else {
+        console.error("API Error:", response.status, response.statusText);
+        throw new Error('Failed to fetch mentor teams')
+      }
+    } catch (error) {
+      console.error('Error fetching mentor teams:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load your teams",
+        variant: "destructive"
+      })
+      setMentorTeams([])
+    } finally {
+      setLoadingTeams(false)
+    }
+  }
+
+  // Helper functions (moved before useMemo to avoid hoisting issues)
   const getTeamStatusFromProgress = (progress: number, submissionStatus: string) => {
     if (submissionStatus === "submitted") return "Completed"
     if (progress >= 80) return "Excellent"
@@ -101,20 +126,47 @@ export default function MentorTeamsPage() {
       { 
         title: "MVP Development", 
         completed: true, 
-        dueDate: new Date(startDate.getTime() + (quarter * 2)).toLocaleDateString() 
+        dueDate: new Date(startDate.getTime() + quarter * 2).toLocaleDateString() 
       },
       { 
         title: "Testing & Refinement", 
         completed: false, 
-        dueDate: new Date(startDate.getTime() + (quarter * 3)).toLocaleDateString() 
+        dueDate: new Date(startDate.getTime() + quarter * 3).toLocaleDateString() 
       },
       { 
-        title: "Final Presentation", 
+        title: "Final Submission", 
         completed: false, 
         dueDate: endDate.toLocaleDateString() 
-      },
+      }
     ]
   }
+
+  // Process teams data for display
+  const teams = useMemo(() => {
+    return mentorTeams.map((team: any) => ({
+      id: team._id,
+      name: team.name || "Unnamed Team",
+      hackathon: team.hackathon?.title || "Unknown Hackathon",
+      projectTitle: team.projectTitle || "Project Title TBD",
+      members: team.members?.map((member: any) => ({
+        id: member._id || member.id,
+        name: member.name || member.username || "Team Member",
+        role: member.role || "Member",
+        email: member.email || "",
+        avatar: member.image || "/placeholder.svg",
+        skills: member.skills || ["Developer"]
+      })) || [],
+      progress: team.progress || 0,
+      status: getTeamStatusFromProgress(team.progress || 0, team.submissionStatus),
+      lastUpdate: formatLastUpdate(team.updatedAt || team.createdAt),
+      nextMeeting: "TBD",
+      milestones: generateMilestones(team.hackathon),
+      recentMessages: [], // Will be populated from actual messaging system
+      challenges: team.challenges || ["No challenges reported"],
+      strengths: team.strengths || ["Team collaboration"],
+      rawTeam: team
+    }))
+  }, [mentorTeams, currentUserId])
 
   const [selectedTeam, setSelectedTeam] = useState<any>(null)
   const [newMessage, setNewMessage] = useState("")
@@ -182,17 +234,15 @@ export default function MentorTeamsPage() {
         <div className="flex justify-between items-center">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <Link href="/dashboard/mentor">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Dashboard
-                </Button>
-              </Link>
+              
             </div>
             <h1 className="text-3xl font-bold text-gray-900">My Teams</h1>
             <p className="text-gray-600">Guide and mentor your assigned hackathon teams</p>
           </div>
-          <Dialog open={isMessageDialogOpen} onOpenChange={setIsMessageDialogOpen}>
+          </div>
+          <div className="flex gap-2">
+           
+            <Dialog open={isMessageDialogOpen} onOpenChange={setIsMessageDialogOpen}>
             <DialogTrigger asChild>
               <Button disabled={teams.length === 0}>
                 <MessageSquare className="mr-2 h-4 w-4" />

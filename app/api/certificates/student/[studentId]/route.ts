@@ -9,7 +9,7 @@ export async function GET(
     await db()
     
     const { studentId } = params
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = request.nextUrl
     const type = searchParams.get('type')
     
     // Mock certificates data - replace with actual database queries
