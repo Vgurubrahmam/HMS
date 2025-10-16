@@ -61,8 +61,8 @@ export function ProtectedRoute({
 
     checkAuth()
 
-    // Set up periodic token check
-    const interval = setInterval(checkAuth, 60000) // Check every minute
+    // Set up periodic token check (less frequent since we have global checker)
+    const interval = setInterval(checkAuth, 120000) // Check every 2 minutes
 
     return () => clearInterval(interval)
   }, [router, allowedRoles, redirectTo])

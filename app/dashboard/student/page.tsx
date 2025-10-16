@@ -125,8 +125,6 @@ export default function StudentDashboard() {
     const start = startDate ? formatDate(startDate) : null
     const end = endDate ? formatDate(endDate) : null
     
-    // Debug logging to see what data we're getting
-    console.log('Date range debug:', { startDate, endDate, start, end })
     
     if (!start && !end) return 'Event dates coming soon'
     if (!start) return `End: ${end}`

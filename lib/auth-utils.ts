@@ -15,7 +15,10 @@ export function isTokenExpired(token: string): boolean {
     const decoded: TokenPayload = jwtDecode(token)
     const currentTime = Date.now() / 1000 // Convert to seconds
     
-    return decoded.exp ? decoded.exp < currentTime : true
+    // Add a small buffer (5 seconds) to prevent edge cases
+    const buffer = 5
+    
+    return decoded.exp ? (decoded.exp - buffer) < currentTime : true
   } catch (error) {
     console.error("Error decoding token:", error)
     return true // Treat invalid tokens as expired

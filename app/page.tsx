@@ -6,12 +6,10 @@ import { Code2, Component } from "lucide-react"
 import { Code, Users, Trophy, Calendar, ArrowRight, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { Navbar } from "@/components/navbar"
-import { Github, Linkedin, Mail, ArrowUp } from "lucide-react"
-import { AppProps } from "next/app"
-import { SessionProvider } from "next-auth/react"
+import { Github, Linkedin, Mail } from "lucide-react"
 import { useState, useEffect } from "react"
 
-export default function HomePage({Component,pageProps}:AppProps) {
+export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   useEffect(() => {
@@ -26,10 +24,6 @@ export default function HomePage({Component,pageProps}:AppProps) {
     })
   }
 
-    // <SessionProvider session={pageProps.session}>
-    //   <Component {...pageProps}/>
-
-    // </SessionProvider>
   return (
     <div className="h-screen w-screen overflow-auto ">
       <Navbar />

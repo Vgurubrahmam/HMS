@@ -9,18 +9,22 @@ import { Calendar, Users, Trophy, TrendingUp, Plus, Eye, BarChart3, PieChart, Ac
 import { useTeams } from "@/hooks/use-teams"
 import { useUsers } from "@/hooks/use-users"
 import { useRegistrations } from "@/hooks/use-registrations"
+import { useRequireAuth } from "@/hooks/use-auth-redirect"
+import { TokenExpirationTest } from "@/components/token-expiration-test"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function CoordinatorDashboard() {
+  // Automatically redirect to home if no token found
+  useRequireAuth(['coordinator'])
+  
   const [hackathons, setHackathons] = useState([])
-  const { teams, loading: teamsLoading, refetch: refetchTeams } = useTeams({ limit: 50 })
-  const { users, loading: usersLoading, refetch: refetchUsers } = useUsers({ role: "student", limit: 100 })
-  const { registrations, loading: registrationsLoading, refetch: refetchRegistrations } = useRegistrations({ limit: 100 })
+  const { teams, loading: teamsLoading } = useTeams({ limit: 50 })
+  const { users, loading: usersLoading } = useUsers({ role: "student", limit: 100 })
+  const { registrations, loading: registrationsLoading } = useRegistrations({ limit: 100 })
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const overallLoading = loading || teamsLoading || usersLoading || registrationsLoading
 
   // Calculate dynamic statistics from real data
@@ -76,7 +80,7 @@ export default function CoordinatorDashboard() {
     try {
       setLoading(true)
       const res = await fetch("/api/hackathons?limit=100", {
-        method: "GET",
+        method: "GET", 
         headers: { "Content-Type": "application/json" }
       })
       const data = await res.json()
@@ -92,7 +96,7 @@ export default function CoordinatorDashboard() {
       }
     } catch (error: any) {
       toast({
-        variant: "destructive",
+        variant: "destructive", 
         title: "Error",
         description: error.message || "Something went wrong while fetching hackathons"
       })
@@ -101,74 +105,16 @@ export default function CoordinatorDashboard() {
     }
   }
 
-  // Refresh participant counts for all hackathons
-  const refreshParticipantCounts = async () => {
-    try {
-      const response = await fetch('/api/hackathons/refresh-participants', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
-      const result = await response.json()
-      
-      if (result.success) {
-        await fetchHackathons() // Refresh hackathons after updating counts
-        return result
-      }
-      return result
-    } catch (error) {
-      console.error('Failed to refresh participant counts:', error)
-      return { success: false, error: 'Failed to refresh participant counts' }
-    }
+  // Update hackathon data dynamically when user navigates back to dashboard
+  const handleDataUpdate = () => {
+    // This function can be called when user performs actions
+    // that should update the dashboard data without page reload
+    fetchHackathons()
   }
 
-  // Refresh all data
-  const refreshAllData = async () => {
-    setIsRefreshing(true)
-    try {
-      // First refresh participant counts, then fetch all other data
-      await refreshParticipantCounts()
-      await Promise.all([
-        refetchTeams(),
-        refetchUsers(),
-        refetchRegistrations()
-      ])
-      
-      toast({
-        title: "Data Refreshed",
-        description: "Dashboard statistics have been updated with the latest data",
-      })
-    } catch (error) {
-      console.error('Error refreshing data:', error)
-      toast({
-        variant: "destructive",
-        title: "Refresh Failed",
-        description: "Failed to refresh dashboard data. Please try again.",
-      })
-    } finally {
-      setIsRefreshing(false)
-    }
-  }
-
-  // Initial data fetch - force refresh all data on mount
+  // Initialize data on mount - no auto-refresh
   useEffect(() => {
-    const initializeData = async () => {
-      await fetchHackathons()
-      // Force refresh to get latest registration data
-      setTimeout(() => {
-        refreshAllData()
-      }, 1000) // Small delay to let initial hooks load
-    }
-    
-    initializeData()
-  }, [])
-
-  // Auto-refresh data every 2 minutes to keep stats current
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refreshAllData()
-    }, 120000) // 2 minutes
-
-    return () => clearInterval(interval)
+    fetchHackathons()
   }, [])
 
   if (overallLoading) {
@@ -204,7 +150,7 @@ export default function CoordinatorDashboard() {
 
         {/* Dynamic Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className={`transition-all duration-300 ${isRefreshing ? 'bg-blue-50 border-blue-200' : ''}`}>
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">Total Hackathons</CardTitle>
               <Calendar className="h-4 w-4 text-blue-600" />
@@ -219,7 +165,7 @@ export default function CoordinatorDashboard() {
             </CardContent>
           </Card>
 
-          <Card className={`transition-all duration-300 ${isRefreshing ? 'bg-green-50 border-green-200' : ''}`}>
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">Total Teams</CardTitle>
               <Users className="h-4 w-4 text-green-600" />
@@ -238,7 +184,7 @@ export default function CoordinatorDashboard() {
             </CardContent>
           </Card>
 
-          <Card className={`transition-all duration-300 ${isRefreshing ? 'bg-yellow-50 border-yellow-200' : ''}`}>
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">Registered Students</CardTitle>
               <Trophy className="h-4 w-4 text-yellow-600" />
@@ -253,7 +199,7 @@ export default function CoordinatorDashboard() {
             </CardContent>
           </Card>
 
-          <Card className={`transition-all duration-300 ${isRefreshing ? 'bg-purple-50 border-purple-200' : ''}`}>
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">Revenue</CardTitle>
               <TrendingUp className="h-4 w-4 text-purple-600" />
@@ -271,11 +217,12 @@ export default function CoordinatorDashboard() {
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="hackathons">Recent Hackathons</TabsTrigger>
             <TabsTrigger value="teams">Active Teams</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="debug">Debug</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -554,6 +501,20 @@ export default function CoordinatorDashboard() {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="debug" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Token Expiration Debug</CardTitle>
+                <CardDescription>
+                  Monitor JWT token expiration in real-time. This helps verify that the automatic logout system is working correctly.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <TokenExpirationTest />
               </CardContent>
             </Card>
           </TabsContent>

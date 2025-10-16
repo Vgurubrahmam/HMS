@@ -115,7 +115,8 @@ export function useRegistrations(params?: UseRegistrationsParams): UseRegistrati
   );
 
   useEffect(() => {
-    if (paramsKey && params?.user) {
+    // Allow fetching without user parameter for coordinator dashboards
+    if (paramsKey) {
       fetchRegistrations(); // Line 45
     }
   }, [paramsKey]);

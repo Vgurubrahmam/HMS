@@ -4,7 +4,8 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
-import {GoogleOAuthProviderWrapper  } from "@/components/providers/google-aouth-provider"
+import {GoogleOAuthProviderWrapper  } from "@/components/providers/google-oauth-provider"
+import { TokenExpirationGuard } from "@/components/token-expiration-guard"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
@@ -23,6 +24,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <GoogleOAuthProviderWrapper>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <TokenExpirationGuard checkInterval={30000} redirectPath="/" />
           {children}
           <Toaster />
         </ThemeProvider>

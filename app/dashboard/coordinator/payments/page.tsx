@@ -17,10 +17,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { usePayments } from "@/hooks/use-payments"
-import { Search, Filter, RefreshCw, Eye, CheckCircle, XCircle, Clock } from "lucide-react"
+import { Search, Filter, Eye, CheckCircle, XCircle, Clock, IndianRupee } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+import { useRequireAuth } from "@/hooks/use-auth-redirect"
 
 export default function coordinatorPaymentPage(){
+  // Automatically redirect to home if no token found
+  useRequireAuth(['coordinator'])
+  
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [hackathonFilter, setHackathonFilter] = useState("all")
@@ -32,7 +36,6 @@ export default function coordinatorPaymentPage(){
     loading: paymentsLoading,
     error,
     pagination,
-    refetch,
     updatePayment,
   } = usePayments({
     status: statusFilter !== "all" ? statusFilter : undefined,
@@ -86,13 +89,15 @@ export default function coordinatorPaymentPage(){
       if (result.success) {
         toast({
           title: "Success",
-          description: `Payment status updated to ${newStatus}`,
+          description: `Payment status updated to ${newStatus}. Changes will reflect in the list.`,
         })
+        // The usePayments hook will automatically update the local state
+        // No need for manual refresh or page reload
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to update payment status",
+        title: "Error", 
+        description: "Failed to update payment status. Please try again.",
         variant: "destructive",
       })
     }
@@ -131,10 +136,7 @@ export default function coordinatorPaymentPage(){
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <p className="text-red-600 mb-4">Error loading payments: {error}</p>
-            <Button onClick={refetch} variant="outline">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
+            <p className="text-sm text-gray-500">Please try navigating to another page and back to reload the data.</p>
           </div>
         </div>
       </DashboardLayout>
@@ -150,10 +152,6 @@ export default function coordinatorPaymentPage(){
             <h1 className="text-3xl font-bold text-gray-900">Payment Management</h1>
             <p className="text-gray-600 mt-1">Manage and track all hackathon payments</p>
           </div>
-          <Button onClick={refetch} variant="outline" disabled={paymentsLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${paymentsLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
         </div>
 
         {/* Statistics Cards */}
@@ -164,7 +162,7 @@ export default function coordinatorPaymentPage(){
               <div className="h-4 w-4 text-muted-foreground">💰</div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${totalAmount.toFixed(2)}</div>
+              <div className="flex justify-content-center items-center text-center text-2xl font-bold"><IndianRupee  />{totalAmount.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">
                 {filteredPayments.length} payments
               </p>
@@ -177,7 +175,7 @@ export default function coordinatorPaymentPage(){
               <CheckCircle className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">${completedAmount.toFixed(2)}</div>
+              <div className=" flex justify-content-center items-center text-center text-2xl font-bold text-green-600"><IndianRupee/>{completedAmount.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">
                 {filteredPayments.filter((p: any) => p.status === "Completed").length} payments
               </p>
@@ -190,7 +188,7 @@ export default function coordinatorPaymentPage(){
               <Clock className="h-4 w-4 text-yellow-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">${pendingAmount.toFixed(2)}</div>
+              <div className="flex  justify-content-center items-center text-center text-2xl font-bold text-yellow-600"><IndianRupee/>{pendingAmount.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">
                 {filteredPayments.filter((p: any) => p.status === "Pending").length} payments
               </p>
@@ -203,7 +201,7 @@ export default function coordinatorPaymentPage(){
               <XCircle className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">${failedAmount.toFixed(2)}</div>
+              <div className="flex justify-content-center items-center text-2xl font-bold text-red-600"><IndianRupee/>{failedAmount.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">
                 {filteredPayments.filter((p: any) => p.status === "Failed").length} payments
               </p>
@@ -284,7 +282,7 @@ export default function coordinatorPaymentPage(){
           <CardContent>
             {paymentsLoading ? (
               <div className="flex items-center justify-center h-32">
-                <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900 mr-2"></div>
                 Loading payments...
               </div>
             ) : (
@@ -330,8 +328,8 @@ export default function coordinatorPaymentPage(){
                       <TableCell>
                         {payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A'}
                       </TableCell>
-                      <TableCell className="text-right font-medium">
-                        ${payment.amount.toFixed(2)}
+                      <TableCell className="flex justify-content-center items-center text-right font-medium">
+                        <IndianRupee className="h-4 w-4"/>{payment.amount.toFixed(2)}
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex gap-2 justify-center">
